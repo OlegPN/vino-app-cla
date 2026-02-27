@@ -23,6 +23,16 @@ model User {
   followers     Follow[]  @relation("following")
   following     Follow[]  @relation("follower")
   likes         Like[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Follow {
