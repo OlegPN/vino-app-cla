@@ -30,19 +30,26 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSearch = async () => {
-    if (!query && !selectedType) return;
+  const handleSearch = async (type?: string, q?: string) => {
+    const activeType = type !== undefined ? type : selectedType;
+    const activeQuery = q !== undefined ? q : query;
+    if (!activeQuery && !activeType) {
+      setSearchResults([]);
+      return;
+    }
     setSearching(true);
     try {
-      const r = await winesApi.search({ q: query, type: selectedType || undefined });
+      const r = await winesApi.search({ q: activeQuery, type: activeType || undefined });
       setSearchResults(r.wines);
     } finally {
       setSearching(false);
     }
   };
 
-  const displayWines = searchResults.length > 0 || query ? searchResults : trending;
-  const title = searchResults.length > 0 || query ? `Results (${searchResults.length})` : 'Trending 🔥';
+  const displayWines = searchResults.length > 0 || query || selectedType ? searchResults : trending;
+  const title = query || selectedType
+    ? `Results (${searchResults.length})`
+    : 'Trending 🔥';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -54,10 +61,10 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           placeholderTextColor={theme.colors.textLight}
           value={query}
           onChangeText={setQuery}
-          onSubmitEditing={handleSearch}
+          onSubmitEditing={() => handleSearch()}
           returnKeyType="search"
         />
-        <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
+        <TouchableOpacity style={styles.searchBtn} onPress={() => handleSearch()}>
           <Text style={styles.searchBtnText}>🔍</Text>
         </TouchableOpacity>
       </View>
@@ -68,7 +75,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <TouchableOpacity
             key={t.value}
             style={[styles.filterChip, selectedType === t.value && styles.filterChipActive]}
-            onPress={() => { setSelectedType(t.value); setSearchResults([]); }}
+            onPress={() => { setSelectedType(t.value); handleSearch(t.value, query); }}
           >
             <Text style={[styles.filterChipText, selectedType === t.value && styles.filterChipTextActive]}>
               {t.label}
