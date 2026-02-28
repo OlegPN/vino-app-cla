@@ -39,7 +39,7 @@ export const WineCard: React.FC<Props> = ({ wine, onPress, compact }) => {
         </View>
         {wine.prices && wine.prices.length > 0 && (
           <Text style={styles.price}>
-            от ${Math.min(...wine.prices.map(p => p.price))}
+            от {Math.min(...wine.prices.map(p => p.price)).toLocaleString('ru-RU')} ₽
           </Text>
         )}
       </View>

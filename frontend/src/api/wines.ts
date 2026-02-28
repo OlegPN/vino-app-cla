@@ -12,7 +12,7 @@ export const winesApi = {
 
 export const scannerApi = {
   scan: (imageBase64: string) =>
-    api.post<{ found: boolean; wine: Wine | null; suggestedName?: string }>('/scanner/scan', { imageBase64 }),
+    api.post<{ found: boolean; wine: Wine | null; suggestedName?: string; suggestions?: Wine[] }>('/scanner/scan', { imageBase64 }),
   scanBarcode: (barcode: string) =>
     api.post<{ found: boolean; wine: Wine | null }>('/scanner/scan', { barcode }),
 };
@@ -33,10 +33,10 @@ export const collectionApi = {
 };
 
 export const authApi = {
-  login: (displayName: string, password: string) =>
-    api.post<{ accessToken: string; user: any }>('/auth/login', { displayName, password }),
-  register: (data: { displayName: string; password: string }) =>
-    api.post<{ accessToken: string; user: any }>('/auth/register', data),
+  login: (email: string, password: string) =>
+    api.post<{ token: string; user: any }>('/auth/login', { email, password }),
+  register: (data: { email: string; username: string; displayName: string; password: string }) =>
+    api.post<{ token: string; user: any }>('/auth/register', data),
 };
 
 export const usersApi = {

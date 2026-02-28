@@ -144,7 +144,7 @@ export const WineDetailScreen: React.FC<{ route: any; navigation: any }> = ({ ro
             {wine.prices.map(p => (
               <View key={p.id} style={styles.priceRow}>
                 <Text style={styles.retailer}>{p.retailer}</Text>
-                <Text style={styles.priceText}>${p.price} {p.currency}</Text>
+                <Text style={styles.priceText}>{p.price.toLocaleString('ru-RU')} ₽</Text>
               </View>
             ))}
           </View>
