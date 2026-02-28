@@ -8,12 +8,13 @@ datasource db {
 
 model User {
   id            String    @id @default(uuid())
-  email         String    @unique
-  username      String    @unique
+  email         String?   @unique
+  username      String?   @unique
   passwordHash  String?
   displayName   String
   avatarUrl     String?
   bio           String?
+  telegramId    String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

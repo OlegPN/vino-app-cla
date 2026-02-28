@@ -7,6 +7,7 @@ import compression from 'compression';
 dotenv.config();
 
 import { authRouter } from './routes/auth';
+import telegramRouter from './routes/telegram';
 import { winesRouter } from './routes/wines';
 import { reviewsRouter } from './routes/reviews';
 import { collectionRouter } from './routes/collection';
@@ -34,6 +35,7 @@ app.use('/api/auth', authLimiter);
 
 // Routes
 app.use('/api/auth', authRouter);
+app.use('/api/auth/telegram', telegramRouter);
 app.use('/api/wines', winesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/collection', collectionRouter);
