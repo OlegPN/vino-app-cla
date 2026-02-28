@@ -11,5 +11,8 @@ export default defineConfig({
       const pool = new Pool({ connectionString: process.env.DATABASE_URL });
       return new PrismaPg(pool);
     },
+    datasource: {
+      url: process.env.DATABASE_URL as string,
+    },
   },
 });
