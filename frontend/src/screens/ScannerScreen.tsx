@@ -14,9 +14,9 @@ export const ScannerScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.center}>
-        <Text style={styles.permText}>Camera access needed to scan wine labels</Text>
+        <Text style={styles.permText}>Нужен доступ к камере для сканирования этикеток</Text>
         <TouchableOpacity style={styles.btn} onPress={requestPermission}>
-          <Text style={styles.btnText}>Allow Camera</Text>
+          <Text style={styles.btnText}>Разрешить доступ к камере</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -31,12 +31,14 @@ export const ScannerScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       if (result.found && result.wine) {
         navigation.navigate('WineDetail', { wineId: result.wine.id });
       } else {
-        Alert.alert('Wine not found', 'This wine is not in our database yet.', [
-          { text: 'OK', onPress: () => setScanned(false) },
+        Alert.alert('Вино не найдено', 'Этого вина пока нет в нашей базе.', [
+          { text: 'ОК', onPress: () => setScanned(false) },
         ]);
       }
     } catch {
-      Alert.alert('Scan failed', 'Please try again.', [{ text: 'OK', onPress: () => setScanned(false) }]);
+      Alert.alert('Ошибка сканирования', 'Попробуйте ещё раз.', [
+        { text: 'ОК', onPress: () => setScanned(false) },
+      ]);
     } finally {
       setScanning(false);
     }
@@ -50,7 +52,6 @@ export const ScannerScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         onBarcodeScanned={scanned ? undefined : handleBarcode}
         barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'qr'] }}
       />
-      {/* Overlay */}
       <View style={styles.overlay}>
         <View style={styles.topOverlay} />
         <View style={styles.middleRow}>
@@ -67,13 +68,10 @@ export const ScannerScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           {scanning ? (
             <ActivityIndicator color={theme.colors.white} size="large" />
           ) : (
-            <Text style={styles.hint}>Point camera at wine label or barcode</Text>
+            <Text style={styles.hint}>Наведите камеру на этикетку или штрихкод</Text>
           )}
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.cancelText}>Cancel</Text>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.cancelText}>Отмена</Text>
           </TouchableOpacity>
         </View>
       </View>

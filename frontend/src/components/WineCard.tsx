@@ -5,8 +5,8 @@ import { Wine } from '../types';
 import { getWineImageUri } from '../utils/wineImage';
 
 const WINE_TYPE_LABEL: Record<string, string> = {
-  RED: '🍷 Red', WHITE: '🥂 White', ROSE: '🌸 Rosé',
-  SPARKLING: '🍾 Sparkling', DESSERT: '🍯 Dessert', FORTIFIED: '🥃 Fortified',
+  RED: '🍷 Красное', WHITE: '🥂 Белое', ROSE: '🌸 Розовое',
+  SPARKLING: '🍾 Игристое', DESSERT: '🍯 Десертное', FORTIFIED: '🥃 Крепленое',
 };
 
 interface Props {
@@ -35,11 +35,11 @@ export const WineCard: React.FC<Props> = ({ wine, onPress, compact }) => {
         <View style={styles.ratingRow}>
           <Text style={styles.stars}>{stars}</Text>
           <Text style={styles.ratingText}>{wine.avgRating.toFixed(1)}</Text>
-          <Text style={styles.reviewCount}>({wine.reviewCount})</Text>
+          <Text style={styles.reviewCount}>({wine.reviewCount} отзывов)</Text>
         </View>
         {wine.prices && wine.prices.length > 0 && (
           <Text style={styles.price}>
-            From ${Math.min(...wine.prices.map(p => p.price))}
+            от ${Math.min(...wine.prices.map(p => p.price))}
           </Text>
         )}
       </View>
@@ -49,33 +49,17 @@ export const WineCard: React.FC<Props> = ({ wine, onPress, compact }) => {
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.white,
+    flexDirection: 'row', backgroundColor: theme.colors.white,
     borderRadius: theme.borderRadius.md,
-    marginHorizontal: theme.spacing.md,
-    marginVertical: theme.spacing.sm,
+    marginHorizontal: theme.spacing.md, marginVertical: theme.spacing.sm,
     padding: theme.spacing.md,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 }, elevation: 3,
+    borderWidth: 1, borderColor: theme.colors.border,
   },
   compact: { marginHorizontal: 0 },
-  image: {
-    width: 80,
-    height: 110,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.surfaceAlt,
-  },
-  imageCompact: {
-    width: 60,
-    height: 80,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.surfaceAlt,
-  },
+  image: { width: 80, height: 110, borderRadius: theme.borderRadius.sm, backgroundColor: theme.colors.surfaceAlt },
+  imageCompact: { width: 60, height: 80, borderRadius: theme.borderRadius.sm, backgroundColor: theme.colors.surfaceAlt },
   info: { flex: 1, marginLeft: theme.spacing.md, justifyContent: 'center' },
   name: { fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.semibold, color: theme.colors.text, marginBottom: 2 },
   winery: { fontSize: theme.fontSize.sm, color: theme.colors.textSecondary, marginBottom: 4 },

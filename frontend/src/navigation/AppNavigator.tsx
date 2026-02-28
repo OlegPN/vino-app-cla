@@ -35,34 +35,34 @@ function HomeTabs() {
         options={{
           title: '🍷 Vino',
           tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />,
-          tabBarLabel: 'Discover',
+          tabBarLabel: 'Каталог',
         }}
       />
       <Tab.Screen
         name="Scanner"
         component={ScannerScreen}
         options={{
-          title: 'Scan Wine',
+          title: 'Сканер',
           tabBarIcon: ({ focused }) => <TabIcon icon="📷" focused={focused} />,
-          tabBarLabel: 'Scan',
+          tabBarLabel: 'Сканер',
         }}
       />
       <Tab.Screen
         name="Collection"
         component={CollectionScreen}
         options={{
-          title: 'My Cellar',
+          title: 'Моя коллекция',
           tabBarIcon: ({ focused }) => <TabIcon icon="🍾" focused={focused} />,
-          tabBarLabel: 'Cellar',
+          tabBarLabel: 'Коллекция',
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: 'Profile',
+          title: 'Профиль',
           tabBarIcon: ({ focused }) => <TabIcon icon="👤" focused={focused} />,
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Профиль',
         }}
       />
     </Tab.Navigator>
@@ -78,7 +78,7 @@ export function AppNavigator() {
           name="WineDetail"
           component={WineDetailScreen}
           options={{
-            title: 'Wine Detail',
+            title: 'О вине',
             headerStyle: { backgroundColor: theme.colors.primary },
             headerTintColor: '#fff',
             headerTitleStyle: { fontWeight: '700' },
