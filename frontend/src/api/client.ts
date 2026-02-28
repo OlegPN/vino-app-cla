@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PRODUCTION_API_URL = 'https://your-vino-api.railway.app/api';
+const PRODUCTION_API_URL = 'https://claw.su/api';
 const DEVELOPMENT_API_URL = 'http://localhost:3000/api';
 
 export const API_BASE = __DEV__ ? DEVELOPMENT_API_URL : PRODUCTION_API_URL;
