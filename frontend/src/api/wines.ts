@@ -33,10 +33,10 @@ export const collectionApi = {
 };
 
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post<{ token: string; user: any }>('/auth/login', { email, password }),
-  register: (data: { email: string; username: string; displayName: string; password: string }) =>
-    api.post<{ token: string; user: any }>('/auth/register', data),
+  login: (displayName: string, password: string) =>
+    api.post<{ accessToken: string; user: any }>('/auth/login', { displayName, password }),
+  register: (data: { displayName: string; password: string }) =>
+    api.post<{ accessToken: string; user: any }>('/auth/register', data),
 };
 
 export const usersApi = {

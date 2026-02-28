@@ -8,14 +8,12 @@ import { z } from 'zod';
 export const authRouter = Router();
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  username: z.string().min(3).max(30),
-  displayName: z.string().min(1).max(60),
+  displayName: z.string().min(2).max(60),
   password: z.string().min(6),
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  displayName: z.string().min(1),
   password: z.string(),
 });
 
@@ -52,15 +50,15 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const { email, username, displayName, password } = parsed.data;
-  const exists = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } });
+  const { displayName, password } = parsed.data;
+  const exists = await prisma.user.findFirst({ where: { displayName } });
   if (exists) {
-    res.status(409).json({ error: 'Email or username already taken' });
+    res.status(409).json({ error: 'Это имя уже занято' });
     return;
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { email, username, displayName, passwordHash },
+    data: { displayName, passwordHash },
   });
   await prisma.collection.create({ data: { userId: user.id } });
 
@@ -70,7 +68,7 @@ authRouter.post('/register', async (req: Request, res: Response): Promise<void> 
   res.status(201).json({
     accessToken,
     refreshToken,
-    user: { id: user.id, email, username, displayName },
+    user: { id: user.id, displayName: user.displayName },
   });
 });
 
@@ -80,15 +78,15 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const { email, password } = parsed.data;
-  const user = await prisma.user.findUnique({ where: { email } });
+  const { displayName, password } = parsed.data;
+  const user = await prisma.user.findFirst({ where: { displayName } });
   if (!user || !user.passwordHash) {
-    res.status(401).json({ error: 'Invalid credentials' });
+    res.status(401).json({ error: 'Неверное имя или пароль' });
     return;
   }
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ error: 'Invalid credentials' });
+    res.status(401).json({ error: 'Неверное имя или пароль' });
     return;
   }
 
@@ -98,7 +96,7 @@ authRouter.post('/login', async (req: Request, res: Response): Promise<void> => 
   res.json({
     accessToken,
     refreshToken,
-    user: { id: user.id, email: user.email, username: user.username, displayName: user.displayName },
+    user: { id: user.id, displayName: user.displayName, avatarUrl: user.avatarUrl },
   });
 });
 
