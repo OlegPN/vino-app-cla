@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { theme } from '../theme';
 import { collectionApi } from '../api/wines';
@@ -16,9 +17,13 @@ export const CollectionScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [activeTab, setActiveTab] = useState<CollectionStatus>('HAVE');
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const loadCollection = async () => {
     setLoading(true);
+    const token = await AsyncStorage.getItem('auth_token');
+    if (!token) { setIsLoggedIn(false); setLoading(false); return; }
+    setIsLoggedIn(true);
     try {
       const r = await collectionApi.get();
       setItems(r.collection?.items || []);
@@ -30,6 +35,21 @@ export const CollectionScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   useFocusEffect(useCallback(() => { loadCollection(); }, []));
 
   const filtered = items.filter(i => i.status === activeTab);
+
+  if (!isLoggedIn && !loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.empty}>
+          <Text style={styles.emptyIcon}>🔒</Text>
+          <Text style={styles.emptyText}>Sign in to see your collection</Text>
+          <Text style={styles.emptySubtext}>Go to the Profile tab to log in or create an account</Text>
+          <TouchableOpacity style={styles.loginBtn} onPress={() => navigation.navigate('Profile')}>
+            <Text style={styles.loginBtnText}>Go to Profile →</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -86,4 +106,6 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 56, marginBottom: theme.spacing.md },
   emptyText: { fontSize: theme.fontSize.xl, fontWeight: theme.fontWeight.bold, color: theme.colors.text, marginBottom: theme.spacing.sm },
   emptySubtext: { fontSize: theme.fontSize.md, color: theme.colors.textSecondary, textAlign: 'center' },
+  loginBtn: { marginTop: 20, backgroundColor: theme.colors.primary, borderRadius: theme.borderRadius.full, paddingHorizontal: 32, paddingVertical: 12 },
+  loginBtnText: { color: '#fff', fontWeight: theme.fontWeight.semibold, fontSize: theme.fontSize.md },
 });

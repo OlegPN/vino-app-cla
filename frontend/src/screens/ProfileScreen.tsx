@@ -28,7 +28,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     setLoading(true);
     try {
       const r = await authApi.login(email, password);
-      await AsyncStorage.setItem('auth_token', r.token);
+      await AsyncStorage.setItem('auth_token', (r as any).accessToken || (r as any).token);
       await AsyncStorage.setItem('auth_user', JSON.stringify(r.user));
       setUser(r.user);
       setLoggedIn(true);
@@ -43,7 +43,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     setLoading(true);
     try {
       const r = await authApi.register({ email, password, username, displayName });
-      await AsyncStorage.setItem('auth_token', r.token);
+      await AsyncStorage.setItem('auth_token', (r as any).accessToken || (r as any).token);
       await AsyncStorage.setItem('auth_user', JSON.stringify(r.user));
       setUser(r.user);
       setLoggedIn(true);

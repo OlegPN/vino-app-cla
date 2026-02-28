@@ -3,12 +3,14 @@ import {
   View, Text, Image, ScrollView, StyleSheet, TouchableOpacity,
   SafeAreaView, ActivityIndicator, Alert, Modal, TextInput,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../theme';
 import { Wine, Review } from '../types';
 import { winesApi, reviewsApi, collectionApi } from '../api/wines';
 import { StarRating } from '../components/StarRating';
+import { getWineImageUri } from '../utils/wineImage';
 
-export const WineDetailScreen: React.FC<{ route: any; navigation: any }> = ({ route }) => {
+export const WineDetailScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
   const { wineId } = route.params;
   const [wine, setWine] = useState<Wine | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,9 +26,17 @@ export const WineDetailScreen: React.FC<{ route: any; navigation: any }> = ({ ro
   }, [wineId]);
 
   const handleAddToCollection = async (status: string) => {
+    const token = await AsyncStorage.getItem('auth_token');
+    if (!token) {
+      Alert.alert('Sign in required', 'Please log in to manage your collection.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Go to Profile', onPress: () => navigation.navigate('Profile') },
+      ]);
+      return;
+    }
     try {
       await collectionApi.add({ wineId, status });
-      Alert.alert('Added!', `Wine added to your ${status.toLowerCase()} list.`);
+      Alert.alert('✅ Added!', `Wine added to your ${status.toLowerCase()} list.`);
     } catch (e: any) {
       Alert.alert('Error', e.message);
     }
@@ -60,9 +70,9 @@ export const WineDetailScreen: React.FC<{ route: any; navigation: any }> = ({ ro
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={{ uri: wine.imageUrl || 'https://via.placeholder.com/150x200/722F37/FFFFFF?text=🍷' }}
+            source={{ uri: getWineImageUri(wine.type, wine.name, wine.imageUrl, 'detail') }}
             style={styles.bottleImage}
-            resizeMode="contain"
+            resizeMode="cover"
           />
           <View style={styles.headerInfo}>
             <Text style={styles.wineName}>{wine.name}</Text>
