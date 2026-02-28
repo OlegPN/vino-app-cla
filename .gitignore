@@ -1,0 +1,19 @@
+# Secrets
+.env
+*.txt
+!README.txt
+
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Build output
+backend/dist/
+frontend/.expo/
+frontend/dist/
+
+# Misc
+.DS_Store
+*.log
+*.production
