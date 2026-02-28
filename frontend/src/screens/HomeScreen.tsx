@@ -14,6 +14,8 @@ const WINE_TYPES = [
   { label: '🥂 White', value: 'WHITE' },
   { label: '🌸 Rosé', value: 'ROSE' },
   { label: '🍾 Sparkling', value: 'SPARKLING' },
+  { label: '🍯 Dessert', value: 'DESSERT' },
+  { label: '🥃 Fortified', value: 'FORTIFIED' },
 ];
 
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -70,19 +72,21 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </View>
 
       {/* Type filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersRow} contentContainerStyle={styles.filtersContent}>
-        {WINE_TYPES.map(t => (
-          <TouchableOpacity
-            key={t.value}
-            style={[styles.filterChip, selectedType === t.value && styles.filterChipActive]}
-            onPress={() => { setSelectedType(t.value); handleSearch(t.value, query); }}
-          >
-            <Text style={[styles.filterChipText, selectedType === t.value && styles.filterChipTextActive]}>
-              {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.filtersRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContent}>
+          {WINE_TYPES.map(t => (
+            <TouchableOpacity
+              key={t.value}
+              style={[styles.filterChip, selectedType === t.value && styles.filterChipActive]}
+              onPress={() => { setSelectedType(t.value); handleSearch(t.value, query); }}
+            >
+              <Text style={[styles.filterChipText, selectedType === t.value && styles.filterChipTextActive]}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <Text style={styles.sectionTitle}>{title}</Text>
 
@@ -130,8 +134,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchBtnText: { fontSize: 20 },
-  filtersRow: { maxHeight: 48 },
-  filtersContent: { paddingHorizontal: theme.spacing.md, gap: theme.spacing.sm, alignItems: 'center' },
+  filtersRow: { height: 56, marginBottom: 4 },
+  filtersContent: { paddingHorizontal: theme.spacing.md, gap: theme.spacing.sm, alignItems: 'center', paddingVertical: 8 },
   filterChip: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: 6,

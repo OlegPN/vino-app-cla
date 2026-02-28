@@ -8,6 +8,35 @@ const WINE_TYPE_LABEL: Record<string, string> = {
   SPARKLING: '🍾 Sparkling', DESSERT: '🍯 Dessert', FORTIFIED: '🥃 Fortified',
 };
 
+const WINE_TYPE_COLORS: Record<string, { bg: string; text: string; emoji: string }> = {
+  RED:       { bg: '#6B2020', text: '#F5E6E6', emoji: '🍷' },
+  WHITE:     { bg: '#C8A84B', text: '#FFF8E7', emoji: '🥂' },
+  ROSE:      { bg: '#D4687A', text: '#FFF0F3', emoji: '🌸' },
+  SPARKLING: { bg: '#2C5F8A', text: '#E8F4FD', emoji: '🍾' },
+  DESSERT:   { bg: '#8B6914', text: '#FFF8E1', emoji: '🍯' },
+  FORTIFIED: { bg: '#5C3317', text: '#F5EBE0', emoji: '🥃' },
+};
+
+function getWineImageUri(wine: Wine): string {
+  // Use provided imageUrl only if it's a real image (not placeholder services)
+  if (wine.imageUrl && !wine.imageUrl.includes('placeholder') && !wine.imageUrl.includes('placehold')) {
+    return wine.imageUrl;
+  }
+  const colors = WINE_TYPE_COLORS[wine.type] || WINE_TYPE_COLORS.RED;
+  const emoji = colors.emoji;
+  const name = (wine.name || '').replace(/[<>&'"]/g, '');
+  const vintage = wine.vintage ? String(wine.vintage) : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400">
+    <rect width="300" height="400" fill="${colors.bg}" rx="12"/>
+    <rect x="100" y="60" width="100" height="200" fill="${colors.text}" fill-opacity="0.15" rx="50"/>
+    <rect x="120" y="40" width="60" height="30" fill="${colors.text}" fill-opacity="0.15" rx="8"/>
+    <text x="150" y="310" font-size="48" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+    <text x="150" y="355" font-size="14" text-anchor="middle" fill="${colors.text}" font-family="sans-serif" font-weight="bold">${name.substring(0, 22)}</text>
+    <text x="150" y="378" font-size="12" text-anchor="middle" fill="${colors.text}" font-family="sans-serif" fill-opacity="0.8">${vintage}</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 interface Props {
   wine: Wine;
   onPress: () => void;
@@ -20,7 +49,7 @@ export const WineCard: React.FC<Props> = ({ wine, onPress, compact }) => {
   return (
     <TouchableOpacity style={[styles.card, compact && styles.compact]} onPress={onPress} activeOpacity={0.85}>
       <Image
-        source={{ uri: wine.imageUrl || 'https://via.placeholder.com/80x110/722F37/FFFFFF?text=🍷' }}
+        source={{ uri: getWineImageUri(wine) }}
         style={compact ? styles.imageCompact : styles.image}
         resizeMode="cover"
       />
