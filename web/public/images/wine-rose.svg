@@ -1,0 +1,33 @@
+<svg width="200" height="480" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="480" fill="#fdf0f3"/>
+  <!-- Bottle body (clear/light pink) -->
+  <rect x="58" y="210" width="84" height="220" rx="8" fill="#C87B96"/>
+  <!-- Bottle shoulder -->
+  <path d="M58,210 Q55,165 72,148 L80,100 L120,100 L128,148 Q145,165 142,210 Z" fill="#C87B96"/>
+  <!-- Bottle neck -->
+  <rect x="80" y="42" width="40" height="58" rx="4" fill="#C87B96"/>
+  <!-- Wine color inside (showing through) -->
+  <rect x="62" y="215" width="76" height="210" rx="6" fill="#E8A0B4" opacity="0.4"/>
+  <!-- Capsule -->
+  <rect x="78" y="36" width="44" height="18" rx="4" fill="#9B2D55"/>
+  <!-- Cork top -->
+  <rect x="88" y="28" width="24" height="10" rx="3" fill="#C4A35A"/>
+  <!-- Label background -->
+  <rect x="62" y="248" width="76" height="110" rx="6" fill="#fff" opacity="0.95"/>
+  <!-- Label border -->
+  <rect x="64" y="250" width="72" height="106" rx="5" fill="none" stroke="#E8748A" stroke-width="1.5"/>
+  <!-- Label decoration top -->
+  <rect x="70" y="262" width="60" height="2" fill="#E8748A"/>
+  <!-- Winery name placeholder -->
+  <rect x="72" y="272" width="56" height="6" rx="2" fill="#E8748A" opacity="0.7"/>
+  <!-- Wine name placeholder -->
+  <rect x="74" y="286" width="52" height="5" rx="2" fill="#9B2D55" opacity="0.6"/>
+  <rect x="78" y="295" width="44" height="5" rx="2" fill="#9B2D55" opacity="0.6"/>
+  <!-- Label decoration bottom -->
+  <rect x="70" y="310" width="60" height="1.5" fill="#E8748A" opacity="0.6"/>
+  <!-- Vintage -->
+  <rect x="82" y="318" width="36" height="5" rx="2" fill="#9B2D55" opacity="0.4"/>
+  <!-- Shine effect -->
+  <rect x="70" y="210" width="10" height="200" rx="5" fill="#fff" opacity="0.18"/>
+</svg>

@@ -1,0 +1,40 @@
+<svg width="200" height="480" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="480" fill="#f0f4f0"/>
+  <!-- Bottle body (champagne dark green) -->
+  <rect x="54" y="210" width="92" height="220" rx="10" fill="#1A3A1A"/>
+  <!-- Bottle shoulder (wider for champagne) -->
+  <path d="M54,210 Q52,160 72,142 L82,96 L118,96 L128,142 Q148,160 146,210 Z" fill="#1A3A1A"/>
+  <!-- Bottle neck (shorter, wider) -->
+  <rect x="82" y="42" width="36" height="54" rx="4" fill="#1A3A1A"/>
+  <!-- Mushroom cork -->
+  <ellipse cx="100" cy="34" rx="22" ry="8" fill="#C4A35A"/>
+  <rect x="90" y="26" width="20" height="14" rx="3" fill="#C4A35A"/>
+  <!-- Wire cage suggestion -->
+  <path d="M84,42 L84,54 M116,42 L116,54 M88,38 Q100,44 112,38" stroke="#C4A35A" stroke-width="1.5" fill="none" opacity="0.6"/>
+  <!-- Foil capsule -->
+  <rect x="78" y="36" width="44" height="22" rx="4" fill="#C4A028" opacity="0.9"/>
+  <!-- Label background -->
+  <rect x="58" y="248" width="84" height="110" rx="6" fill="#FFFDE7" opacity="0.97"/>
+  <!-- Label border (double) -->
+  <rect x="60" y="250" width="80" height="106" rx="5" fill="none" stroke="#C4A028" stroke-width="2"/>
+  <rect x="64" y="254" width="72" height="98" rx="4" fill="none" stroke="#C4A028" stroke-width="0.8" opacity="0.5"/>
+  <!-- Label decoration top -->
+  <rect x="68" y="264" width="64" height="2" fill="#C4A028"/>
+  <!-- Winery name -->
+  <rect x="70" y="274" width="60" height="6" rx="2" fill="#C4A028" opacity="0.8"/>
+  <!-- Wine name -->
+  <rect x="72" y="288" width="56" height="5" rx="2" fill="#1A3A1A" opacity="0.7"/>
+  <rect x="76" y="297" width="48" height="5" rx="2" fill="#1A3A1A" opacity="0.7"/>
+  <!-- Brut label -->
+  <rect x="78" y="310" width="44" height="1.5" fill="#C4A028" opacity="0.6"/>
+  <rect x="82" y="318" width="36" height="5" rx="2" fill="#1A3A1A" opacity="0.4"/>
+  <!-- Bubbles decoration -->
+  <circle cx="76" cy="350" r="2.5" fill="#fff" opacity="0.15"/>
+  <circle cx="84" cy="380" r="2" fill="#fff" opacity="0.12"/>
+  <circle cx="92" cy="360" r="1.5" fill="#fff" opacity="0.1"/>
+  <circle cx="120" cy="345" r="2" fill="#fff" opacity="0.12"/>
+  <circle cx="112" cy="375" r="2.5" fill="#fff" opacity="0.1"/>
+  <!-- Shine effect -->
+  <rect x="66" y="210" width="10" height="200" rx="5" fill="#fff" opacity="0.08"/>
+</svg>

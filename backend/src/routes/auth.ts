@@ -38,7 +38,7 @@ async function storeRefreshToken(userId: string, refreshToken: string): Promise<
     skip: 4,
   });
   if (existing.length > 0) {
-    await prisma.refreshToken.deleteMany({ where: { id: { in: existing.map((t) => t.id) } } });
+    await prisma.refreshToken.deleteMany({ where: { id: { in: existing.map((t: { id: string }) => t.id) } } });
   }
 
   await prisma.refreshToken.create({ data: { userId, tokenHash, expiresAt } });
