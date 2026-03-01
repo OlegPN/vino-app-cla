@@ -1,34 +1,11 @@
-// Real Unsplash wine bottle photos (curated, no API key needed)
+// Local wine bottle photos (served from /public/wines/)
 const WINE_PHOTOS: Record<string, string[]> = {
-  RED: [
-    'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1569529465841-dfecdab7503b?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1504279577054-8c03d689de84?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1506377585622-bedcbb027afc?w=300&h=400&fit=crop&q=80',
-  ],
-  WHITE: [
-    'https://images.unsplash.com/photo-1568213816046-0ee1c42bd559?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1474722883778-792e7990302f?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=300&h=400&fit=crop&q=80',
-  ],
-  ROSE: [
-    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1578911373434-0cb395d2cbfb?w=300&h=400&fit=crop&q=80',
-  ],
-  SPARKLING: [
-    'https://images.unsplash.com/photo-1491933382434-500287f9b54b?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1535540878298-099e9ea57b5b?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1548247416-ec66f4900b2e?w=300&h=400&fit=crop&q=80',
-  ],
-  DESSERT: [
-    'https://images.unsplash.com/photo-1574968492987-cb640d17e36a?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1527723945520-2e7e42e42b67?w=300&h=400&fit=crop&q=80',
-  ],
-  FORTIFIED: [
-    'https://images.unsplash.com/photo-1561037404-61cd46aa615b?w=300&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1516594798947-e65505dbb29d?w=300&h=400&fit=crop&q=80',
-  ],
+  RED:       ['/wines/red-bordeaux.jpg', '/wines/red-burgundy.jpg', '/wines/red-napa.jpg', '/wines/red-italian.jpg', '/wines/red-rhone.jpg'],
+  WHITE:     ['/wines/white-burgundy.jpg', '/wines/white-sauvignon.jpg', '/wines/white-riesling.jpg'],
+  ROSE:      ['/wines/rose.jpg'],
+  SPARKLING: ['/wines/sparkling.jpg', '/wines/champagne.jpg'],
+  DESSERT:   ['/wines/dessert.jpg'],
+  FORTIFIED: ['/wines/port.jpg'],
 };
 
 const TYPE_COLORS: Record<string, { bg: string; text: string; emoji: string }> = {

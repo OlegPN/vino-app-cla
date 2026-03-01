@@ -3,7 +3,11 @@ import { Wine } from '../types';
 
 export const winesApi = {
   search: (params: { q?: string; type?: string; country?: string; page?: number }) => {
-    const query = new URLSearchParams(params as any).toString();
+    const clean: Record<string, string> = {};
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== null && v !== '') clean[k] = String(v);
+    }
+    const query = new URLSearchParams(clean).toString();
     return api.get<{ wines: Wine[] }>(`/wines?${query}`);
   },
   trending: () => api.get<{ wines: Wine[] }>('/wines/trending'),

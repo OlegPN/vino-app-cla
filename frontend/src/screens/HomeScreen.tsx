@@ -25,31 +25,38 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [selectedType, setSelectedType] = useState('');
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
 
+  // Load trending on mount
   useEffect(() => {
     winesApi.trending()
       .then(r => setTrending(r.wines))
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSearch = async (type?: string, q?: string) => {
-    const activeType = type !== undefined ? type : selectedType;
-    const activeQuery = q !== undefined ? q : query;
-    if (!activeQuery && !activeType) {
+  // Debounce query input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 400);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Run search whenever debouncedQuery or selectedType changes
+  useEffect(() => {
+    if (!debouncedQuery && !selectedType) {
       setSearchResults([]);
       return;
     }
     setSearching(true);
-    try {
-      const r = await winesApi.search({ q: activeQuery, type: activeType || undefined });
-      setSearchResults(r.wines);
-    } finally {
-      setSearching(false);
-    }
-  };
+    winesApi.search({ q: debouncedQuery || undefined, type: (selectedType as any) || undefined })
+      .then(r => setSearchResults(r.wines))
+      .finally(() => setSearching(false));
+  }, [debouncedQuery, selectedType]);
 
-  const displayWines = searchResults.length > 0 || query || selectedType ? searchResults : trending;
-  const title = query || selectedType
+  const handleQueryChange = (text: string) => setQuery(text);
+
+  const isFiltering = !!(query || selectedType);
+  const displayWines = isFiltering ? searchResults : trending;
+  const title = isFiltering
     ? `Результаты (${searchResults.length})`
     : 'Популярное 🔥';
 
@@ -61,11 +68,11 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           placeholder="Поиск вин, производителей..."
           placeholderTextColor={theme.colors.textLight}
           value={query}
-          onChangeText={setQuery}
-          onSubmitEditing={() => handleSearch()}
+          onChangeText={handleQueryChange}
+          onSubmitEditing={() => setDebouncedQuery(query)}
           returnKeyType="search"
         />
-        <TouchableOpacity style={styles.searchBtn} onPress={() => handleSearch()}>
+        <TouchableOpacity style={styles.searchBtn} onPress={() => setDebouncedQuery(query)}>
           <Text style={styles.searchBtnText}>🔍</Text>
         </TouchableOpacity>
       </View>
@@ -76,7 +83,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <TouchableOpacity
               key={t.value}
               style={[styles.filterChip, selectedType === t.value && styles.filterChipActive]}
-              onPress={() => { setSelectedType(t.value); handleSearch(t.value, query); }}
+              onPress={() => setSelectedType(t.value)}
             >
               <Text style={[styles.filterChipText, selectedType === t.value && styles.filterChipTextActive]}>
                 {t.label}

@@ -9,6 +9,8 @@ import { ScannerScreen } from '../screens/ScannerScreen';
 import { CollectionScreen } from '../screens/CollectionScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { WineDetailScreen } from '../screens/WineDetailScreen';
+import { JournalScreen } from '../screens/JournalScreen';
+import { ArticleDetailScreen } from '../screens/ArticleDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -36,6 +38,15 @@ function HomeTabs() {
           title: '🍷 Vino',
           tabBarIcon: ({ focused }) => <TabIcon icon="🏠" focused={focused} />,
           tabBarLabel: 'Каталог',
+        }}
+      />
+      <Tab.Screen
+        name="Journal"
+        component={JournalScreen}
+        options={{
+          title: 'Журнал',
+          tabBarIcon: ({ focused }) => <TabIcon icon="📖" focused={focused} />,
+          tabBarLabel: 'Журнал',
         }}
       />
       <Tab.Screen
@@ -79,6 +90,16 @@ export function AppNavigator() {
           component={WineDetailScreen}
           options={{
             title: 'О вине',
+            headerStyle: { backgroundColor: theme.colors.primary },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: '700' },
+          }}
+        />
+        <Stack.Screen
+          name="ArticleDetail"
+          component={ArticleDetailScreen}
+          options={{
+            title: 'Статья',
             headerStyle: { backgroundColor: theme.colors.primary },
             headerTintColor: '#fff',
             headerTitleStyle: { fontWeight: '700' },
