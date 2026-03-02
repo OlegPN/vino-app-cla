@@ -1,40 +1,196 @@
-<svg width="200" height="480" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="200" height="480" fill="#f0f4f0"/>
-  <!-- Bottle body (champagne dark green) -->
-  <rect x="54" y="210" width="92" height="220" rx="10" fill="#1A3A1A"/>
-  <!-- Bottle shoulder (wider for champagne) -->
-  <path d="M54,210 Q52,160 72,142 L82,96 L118,96 L128,142 Q148,160 146,210 Z" fill="#1A3A1A"/>
-  <!-- Bottle neck (shorter, wider) -->
-  <rect x="82" y="42" width="36" height="54" rx="4" fill="#1A3A1A"/>
-  <!-- Mushroom cork -->
-  <ellipse cx="100" cy="34" rx="22" ry="8" fill="#C4A35A"/>
-  <rect x="90" y="26" width="20" height="14" rx="3" fill="#C4A35A"/>
-  <!-- Wire cage suggestion -->
-  <path d="M84,42 L84,54 M116,42 L116,54 M88,38 Q100,44 112,38" stroke="#C4A35A" stroke-width="1.5" fill="none" opacity="0.6"/>
-  <!-- Foil capsule -->
-  <rect x="78" y="36" width="44" height="22" rx="4" fill="#C4A028" opacity="0.9"/>
-  <!-- Label background -->
-  <rect x="58" y="248" width="84" height="110" rx="6" fill="#FFFDE7" opacity="0.97"/>
-  <!-- Label border (double) -->
-  <rect x="60" y="250" width="80" height="106" rx="5" fill="none" stroke="#C4A028" stroke-width="2"/>
-  <rect x="64" y="254" width="72" height="98" rx="4" fill="none" stroke="#C4A028" stroke-width="0.8" opacity="0.5"/>
-  <!-- Label decoration top -->
-  <rect x="68" y="264" width="64" height="2" fill="#C4A028"/>
-  <!-- Winery name -->
-  <rect x="70" y="274" width="60" height="6" rx="2" fill="#C4A028" opacity="0.8"/>
-  <!-- Wine name -->
-  <rect x="72" y="288" width="56" height="5" rx="2" fill="#1A3A1A" opacity="0.7"/>
-  <rect x="76" y="297" width="48" height="5" rx="2" fill="#1A3A1A" opacity="0.7"/>
-  <!-- Brut label -->
-  <rect x="78" y="310" width="44" height="1.5" fill="#C4A028" opacity="0.6"/>
-  <rect x="82" y="318" width="36" height="5" rx="2" fill="#1A3A1A" opacity="0.4"/>
-  <!-- Bubbles decoration -->
-  <circle cx="76" cy="350" r="2.5" fill="#fff" opacity="0.15"/>
-  <circle cx="84" cy="380" r="2" fill="#fff" opacity="0.12"/>
-  <circle cx="92" cy="360" r="1.5" fill="#fff" opacity="0.1"/>
-  <circle cx="120" cy="345" r="2" fill="#fff" opacity="0.12"/>
-  <circle cx="112" cy="375" r="2.5" fill="#fff" opacity="0.1"/>
-  <!-- Shine effect -->
-  <rect x="66" y="210" width="10" height="200" rx="5" fill="#fff" opacity="0.08"/>
+<svg width="200" height="480" viewBox="0 0 200 480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Bottle glass gradient: deep dark green for champagne -->
+    <linearGradient id="bottleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0d1f0d"/>
+      <stop offset="12%" stop-color="#1a3a1a"/>
+      <stop offset="28%" stop-color="#1f4a1f"/>
+      <stop offset="50%" stop-color="#183818"/>
+      <stop offset="72%" stop-color="#1f4a1f"/>
+      <stop offset="88%" stop-color="#1a3a1a"/>
+      <stop offset="100%" stop-color="#0d1f0d"/>
+    </linearGradient>
+    <!-- Capsule: gold foil -->
+    <linearGradient id="capsuleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7a5a08"/>
+      <stop offset="30%" stop-color="#c4a028"/>
+      <stop offset="55%" stop-color="#d4b030"/>
+      <stop offset="80%" stop-color="#b09020"/>
+      <stop offset="100%" stop-color="#7a5a08"/>
+    </linearGradient>
+    <!-- Wire cage color -->
+    <linearGradient id="wireGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#888"/>
+      <stop offset="50%" stop-color="#ccc"/>
+      <stop offset="100%" stop-color="#888"/>
+    </linearGradient>
+    <!-- Cork - mushroom shape gradient -->
+    <linearGradient id="corkGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a07848"/>
+      <stop offset="40%" stop-color="#c49858"/>
+      <stop offset="100%" stop-color="#a07848"/>
+    </linearGradient>
+    <!-- Label gradient: cream -->
+    <linearGradient id="labelGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffef5"/>
+      <stop offset="100%" stop-color="#f8f0d8"/>
+    </linearGradient>
+    <!-- Drop shadow -->
+    <filter id="shadow" x="-20%" y="-5%" width="140%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#0d1f0d" flood-opacity="0.45"/>
+    </filter>
+    <!-- Bubbles animation area highlight -->
+    <linearGradient id="bubblesGlow" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#2a5a2a" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#2a5a2a" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Drop shadow ellipse -->
+  <ellipse cx="100" cy="458" rx="48" ry="9" fill="#0d1f0d" opacity="0.25"/>
+
+  <!-- === BOTTLE SHAPE (Champagne style - wider punt, rounded shoulders) === -->
+  <path d="
+    M 66,432
+    Q 54,432 54,420
+    L 54,222
+    Q 54,214 58,212
+    Q 52,196 52,174
+    Q 51,152 64,138
+    L 72,110
+    L 76,70
+    Q 76,63 83,61
+    L 83,50
+    Q 83,44 89,44
+    L 111,44
+    Q 117,44 117,50
+    L 117,61
+    Q 124,63 124,70
+    L 128,110
+    L 136,138
+    Q 149,152 148,174
+    Q 148,196 142,212
+    Q 146,214 146,222
+    L 146,420
+    Q 146,432 134,432
+    Z
+  " fill="url(#bottleGrad)" filter="url(#shadow)"/>
+
+  <!-- Punt (indentation at bottom) -->
+  <ellipse cx="100" cy="425" rx="28" ry="10" fill="#0d1f0d" opacity="0.5"/>
+  <ellipse cx="100" cy="423" rx="18" ry="6" fill="#0d1f0d" opacity="0.4"/>
+
+  <!-- Wine inside glow (through dark glass) -->
+  <path d="
+    M 66,432
+    Q 57,432 57,422
+    L 57,222
+    L 143,222
+    L 143,422
+    Q 143,432 134,432
+    Z
+  " fill="#2a5a2a" opacity="0.18"/>
+
+  <!-- Bubbles rising inside -->
+  <circle cx="80" cy="380" r="2" fill="#fff" opacity="0.08"/>
+  <circle cx="90" cy="350" r="1.5" fill="#fff" opacity="0.07"/>
+  <circle cx="100" cy="320" r="2" fill="#fff" opacity="0.08"/>
+  <circle cx="110" cy="360" r="1.5" fill="#fff" opacity="0.06"/>
+  <circle cx="120" cy="390" r="2" fill="#fff" opacity="0.07"/>
+  <circle cx="85" cy="410" r="1.5" fill="#fff" opacity="0.06"/>
+  <circle cx="115" cy="340" r="1" fill="#fff" opacity="0.07"/>
+  <circle cx="95" cy="400" r="1.5" fill="#fff" opacity="0.06"/>
+  <circle cx="105" cy="370" r="1" fill="#fff" opacity="0.05"/>
+  <circle cx="75" cy="355" r="1.5" fill="#fff" opacity="0.06"/>
+  <circle cx="125" cy="415" r="1.5" fill="#fff" opacity="0.05"/>
+
+  <!-- Glass highlights - left reflection strip -->
+  <rect x="61" y="218" width="8" height="210" rx="4" fill="#fff" opacity="0.07"/>
+  <rect x="63" y="115" width="5" height="98" rx="2" fill="#fff" opacity="0.06"/>
+  <!-- Neck highlight -->
+  <rect x="84" y="51" width="6" height="57" rx="3" fill="#fff" opacity="0.1"/>
+
+  <!-- === MUSHROOM CORK === -->
+  <!-- Cork mushroom cap -->
+  <ellipse cx="100" cy="32" rx="20" ry="7" fill="url(#corkGrad)"/>
+  <!-- Cork cap top highlight -->
+  <ellipse cx="96" cy="30" rx="8" ry="3" fill="#fff" opacity="0.18"/>
+  <!-- Cork body/stem -->
+  <rect x="91" y="28" width="18" height="18" rx="3" fill="url(#corkGrad)"/>
+  <!-- Cork texture lines -->
+  <line x1="93" y1="32" x2="107" y2="32" stroke="#8a6040" stroke-width="0.7" opacity="0.45"/>
+  <line x1="93" y1="36" x2="107" y2="36" stroke="#8a6040" stroke-width="0.7" opacity="0.35"/>
+  <line x1="93" y1="40" x2="107" y2="40" stroke="#8a6040" stroke-width="0.6" opacity="0.25"/>
+
+  <!-- === WIRE CAGE (muselet) === -->
+  <!-- Cage top loop around cork base -->
+  <ellipse cx="100" cy="46" rx="14" ry="4" fill="none" stroke="url(#wireGrad)" stroke-width="1.2"/>
+  <!-- Cage vertical wires -->
+  <line x1="86" y1="46" x2="83" y2="70" stroke="#aaa" stroke-width="1" opacity="0.7"/>
+  <line x1="92" y1="49" x2="88" y2="70" stroke="#aaa" stroke-width="1" opacity="0.6"/>
+  <line x1="100" y1="50" x2="100" y2="70" stroke="#aaa" stroke-width="1" opacity="0.65"/>
+  <line x1="108" y1="49" x2="112" y2="70" stroke="#aaa" stroke-width="1" opacity="0.6"/>
+  <line x1="114" y1="46" x2="117" y2="70" stroke="#aaa" stroke-width="1" opacity="0.7"/>
+  <!-- Cage bottom loop -->
+  <ellipse cx="100" cy="70" rx="17" ry="5" fill="none" stroke="url(#wireGrad)" stroke-width="1.2"/>
+  <!-- Cage twist point indicator -->
+  <circle cx="117" cy="62" r="3" fill="#bbb" opacity="0.6"/>
+
+  <!-- === GOLD CAPSULE FOIL (under cage) === -->
+  <path d="M 84,44 Q 84,38 89,38 L 111,38 Q 116,38 116,44 L 116,71 Q 113,76 100,76 Q 87,76 84,71 Z" fill="url(#capsuleGrad)" opacity="0.85"/>
+  <!-- Capsule rib -->
+  <line x1="84" y1="55" x2="116" y2="55" stroke="#fff" stroke-width="0.7" opacity="0.2"/>
+  <line x1="84" y1="63" x2="116" y2="63" stroke="#fff" stroke-width="0.7" opacity="0.15"/>
+  <!-- Capsule highlight -->
+  <rect x="87" y="40" width="9" height="30" rx="4" fill="#fff" opacity="0.14"/>
+
+  <!-- === LABEL === -->
+  <rect x="58" y="240" width="84" height="128" rx="5" fill="url(#labelGrad)"/>
+
+  <!-- Label outer border (double) -->
+  <rect x="58" y="240" width="84" height="128" rx="5" fill="none" stroke="#C4A028" stroke-width="2"/>
+  <rect x="62" y="244" width="76" height="120" rx="3" fill="none" stroke="#C4A028" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- Top decorative line -->
+  <line x1="65" y1="254" x2="135" y2="254" stroke="#C4A028" stroke-width="1.3"/>
+
+  <!-- Gold top bar (house/producer) -->
+  <rect x="63" y="257" width="74" height="14" rx="2" fill="#C4A028"/>
+  <rect x="69" y="261" width="46" height="3" rx="1" fill="#fff" opacity="0.88"/>
+  <rect x="73" y="266" width="38" height="2.5" rx="1" fill="#fff" opacity="0.65"/>
+
+  <!-- Decorative line -->
+  <line x1="65" y1="274" x2="135" y2="274" stroke="#C4A028" stroke-width="0.8" opacity="0.6"/>
+
+  <!-- Crest/shield emblem -->
+  <path d="M 100,278 L 112,284 L 112,295 Q 112,302 100,307 Q 88,302 88,295 L 88,284 Z" fill="none" stroke="#C4A028" stroke-width="1"/>
+  <path d="M 100,280 L 110,285 L 110,295 Q 110,301 100,305 Q 90,301 90,295 L 90,285 Z" fill="#C4A028" opacity="0.12"/>
+  <!-- Shield detail -->
+  <line x1="100" y1="281" x2="100" y2="304" stroke="#C4A028" stroke-width="0.7" opacity="0.4"/>
+  <line x1="89" y1="292" x2="111" y2="292" stroke="#C4A028" stroke-width="0.7" opacity="0.4"/>
+
+  <!-- BRUT text line -->
+  <rect x="79" y="311" width="42" height="4" rx="1.5" fill="#C4A028" opacity="0.75"/>
+
+  <!-- Wine name text -->
+  <rect x="69" y="319" width="62" height="3.5" rx="1" fill="#1A3A1A" opacity="0.6"/>
+  <rect x="73" y="325" width="54" height="3" rx="1" fill="#1A3A1A" opacity="0.45"/>
+
+  <!-- Decorative line -->
+  <line x1="65" y1="331" x2="135" y2="331" stroke="#C4A028" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- Vintage year -->
+  <rect x="83" y="335" width="34" height="4.5" rx="1" fill="#C4A028" opacity="0.6"/>
+
+  <!-- Alcohol % -->
+  <rect x="80" y="342" width="40" height="3" rx="1" fill="#1A3A1A" opacity="0.3"/>
+
+  <!-- Bottom line -->
+  <line x1="65" y1="348" x2="135" y2="348" stroke="#C4A028" stroke-width="1.5"/>
+
+  <!-- Bottom region text -->
+  <rect x="78" y="352" width="44" height="2.5" rx="1" fill="#1A3A1A" opacity="0.28"/>
+
+  <!-- Glass bottom highlight -->
+  <ellipse cx="100" cy="432" rx="44" ry="5" fill="#fff" opacity="0.04"/>
 </svg>

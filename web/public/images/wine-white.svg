@@ -1,31 +1,158 @@
-<svg width="200" height="480" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="200" height="480" fill="#f9f5e8"/>
-  <!-- Bottle body -->
-  <rect x="58" y="210" width="84" height="220" rx="8" fill="#3D5C3A"/>
-  <!-- Bottle shoulder -->
-  <path d="M58,210 Q55,165 72,148 L80,100 L120,100 L128,148 Q145,165 142,210 Z" fill="#3D5C3A"/>
-  <!-- Bottle neck -->
-  <rect x="80" y="42" width="40" height="58" rx="4" fill="#3D5C3A"/>
-  <!-- Capsule -->
-  <rect x="78" y="36" width="44" height="18" rx="4" fill="#C4A028"/>
-  <!-- Cork top -->
-  <rect x="88" y="28" width="24" height="10" rx="3" fill="#C4A35A"/>
-  <!-- Label background -->
-  <rect x="62" y="248" width="76" height="110" rx="6" fill="#FFFDE7" opacity="0.97"/>
-  <!-- Label border -->
-  <rect x="64" y="250" width="72" height="106" rx="5" fill="none" stroke="#C4A028" stroke-width="1.5"/>
-  <!-- Label decoration top -->
-  <rect x="70" y="262" width="60" height="2" fill="#C4A028"/>
-  <!-- Winery name placeholder -->
-  <rect x="72" y="272" width="56" height="6" rx="2" fill="#C4A028" opacity="0.7"/>
-  <!-- Wine name placeholder -->
-  <rect x="74" y="286" width="52" height="5" rx="2" fill="#3D5C3A" opacity="0.6"/>
-  <rect x="78" y="295" width="44" height="5" rx="2" fill="#3D5C3A" opacity="0.6"/>
-  <!-- Label decoration bottom -->
-  <rect x="70" y="310" width="60" height="1.5" fill="#C4A028" opacity="0.6"/>
-  <!-- Vintage -->
-  <rect x="82" y="318" width="36" height="5" rx="2" fill="#3D5C3A" opacity="0.4"/>
-  <!-- Shine effect -->
-  <rect x="70" y="210" width="10" height="200" rx="5" fill="#fff" opacity="0.12"/>
+<svg width="200" height="480" viewBox="0 0 200 480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Bottle glass gradient: green glass for white wine -->
+    <linearGradient id="bottleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1a2e1a"/>
+      <stop offset="12%" stop-color="#2e4e2a"/>
+      <stop offset="30%" stop-color="#3a5e34"/>
+      <stop offset="55%" stop-color="#2e4a28"/>
+      <stop offset="75%" stop-color="#3a5e34"/>
+      <stop offset="90%" stop-color="#2e4e2a"/>
+      <stop offset="100%" stop-color="#1a2e1a"/>
+    </linearGradient>
+    <!-- Capsule gradient: gold for white wine -->
+    <linearGradient id="capsuleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8a6a10"/>
+      <stop offset="35%" stop-color="#c4a028"/>
+      <stop offset="65%" stop-color="#b09020"/>
+      <stop offset="100%" stop-color="#8a6a10"/>
+    </linearGradient>
+    <!-- Label gradient: cream -->
+    <linearGradient id="labelGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffdf0"/>
+      <stop offset="100%" stop-color="#f5f0d8"/>
+    </linearGradient>
+    <!-- Cork gradient -->
+    <linearGradient id="corkGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#b8936a"/>
+      <stop offset="50%" stop-color="#d4a96e"/>
+      <stop offset="100%" stop-color="#b8936a"/>
+    </linearGradient>
+    <!-- Drop shadow -->
+    <filter id="shadow" x="-20%" y="-5%" width="140%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#1a3018" flood-opacity="0.35"/>
+    </filter>
+    <!-- Wine glow -->
+    <linearGradient id="wineGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d4c870" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#d4c870" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#d4c870" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Drop shadow ellipse -->
+  <ellipse cx="100" cy="456" rx="42" ry="8" fill="#1a3018" opacity="0.18"/>
+
+  <!-- === BOTTLE SHAPE (Alsace/tall Rhine style) === -->
+  <path d="
+    M 70,430
+    Q 60,430 60,420
+    L 60,220
+    Q 60,213 63,211
+    Q 58,196 58,176
+    Q 57,156 68,142
+    L 75,115
+    L 75,66
+    Q 75,60 81,58
+    L 81,50
+    Q 81,44 87,44
+    L 113,44
+    Q 119,44 119,50
+    L 119,58
+    Q 125,60 125,66
+    L 125,115
+    L 132,142
+    Q 143,156 142,176
+    Q 142,196 137,211
+    Q 140,213 140,220
+    L 140,420
+    Q 140,430 130,430
+    Z
+  " fill="url(#bottleGrad)" filter="url(#shadow)"/>
+
+  <!-- Wine liquid inside (golden glow through green glass) -->
+  <path d="
+    M 70,430
+    Q 62,430 62,422
+    L 62,220
+    L 138,220
+    L 138,422
+    Q 138,430 130,430
+    Z
+  " fill="url(#wineGlow)"/>
+
+  <!-- Glass highlights -->
+  <rect x="66" y="215" width="7" height="210" rx="3" fill="#fff" opacity="0.1"/>
+  <rect x="68" y="120" width="5" height="90" rx="2" fill="#fff" opacity="0.08"/>
+
+  <!-- Neck highlight -->
+  <rect x="81" y="50" width="6" height="60" rx="3" fill="#fff" opacity="0.1"/>
+
+  <!-- Right edge darkening (subtle) -->
+  <rect x="130" y="215" width="8" height="210" rx="4" fill="#000" opacity="0.08"/>
+
+  <!-- === CAPSULE === -->
+  <path d="M 82,44 Q 82,38 87,38 L 113,38 Q 118,38 118,44 L 118,66 Q 115,70 100,70 Q 85,70 82,66 Z" fill="url(#capsuleGrad)"/>
+  <!-- Capsule rib lines -->
+  <line x1="82" y1="52" x2="118" y2="52" stroke="#fff" stroke-width="0.8" opacity="0.25"/>
+  <line x1="82" y1="58" x2="118" y2="58" stroke="#fff" stroke-width="0.8" opacity="0.18"/>
+  <!-- Capsule highlight -->
+  <rect x="85" y="40" width="9" height="24" rx="4" fill="#fff" opacity="0.15"/>
+
+  <!-- === CORK === -->
+  <rect x="90" y="30" width="20" height="12" rx="3" fill="url(#corkGrad)"/>
+  <!-- Cork texture lines -->
+  <line x1="92" y1="33" x2="108" y2="33" stroke="#8a6040" stroke-width="0.7" opacity="0.5"/>
+  <line x1="92" y1="36" x2="108" y2="36" stroke="#8a6040" stroke-width="0.6" opacity="0.4"/>
+  <line x1="92" y1="39" x2="108" y2="39" stroke="#8a6040" stroke-width="0.6" opacity="0.3"/>
+  <!-- Cork top highlight -->
+  <rect x="91" y="31" width="7" height="4" rx="2" fill="#fff" opacity="0.2"/>
+
+  <!-- === LABEL === -->
+  <rect x="65" y="240" width="70" height="124" rx="5" fill="url(#labelGrad)"/>
+
+  <!-- Label outer border -->
+  <rect x="65" y="240" width="70" height="124" rx="5" fill="none" stroke="#C4A028" stroke-width="1.8"/>
+  <!-- Label inner border -->
+  <rect x="69" y="244" width="62" height="116" rx="3" fill="none" stroke="#C4A028" stroke-width="0.7" opacity="0.5"/>
+
+  <!-- Top decorative line -->
+  <line x1="72" y1="254" x2="128" y2="254" stroke="#C4A028" stroke-width="1.2"/>
+
+  <!-- Gold top bar (winery name) -->
+  <rect x="70" y="257" width="60" height="14" rx="2" fill="#C4A028"/>
+  <rect x="76" y="261" width="36" height="3" rx="1" fill="#fff" opacity="0.85"/>
+  <rect x="80" y="266" width="28" height="2.5" rx="1" fill="#fff" opacity="0.6"/>
+
+  <!-- Decorative line -->
+  <line x1="72" y1="274" x2="128" y2="274" stroke="#C4A028" stroke-width="0.8" opacity="0.6"/>
+
+  <!-- Vineyard/leaf emblem -->
+  <ellipse cx="100" cy="293" rx="13" ry="11" fill="none" stroke="#C4A028" stroke-width="1"/>
+  <ellipse cx="100" cy="293" rx="10" ry="8" fill="none" stroke="#C4A028" stroke-width="0.5" opacity="0.4"/>
+  <!-- Leaf detail lines -->
+  <path d="M 96,290 Q 100,285 104,290 Q 100,298 96,290 Z" fill="#C4A028" opacity="0.35"/>
+  <line x1="100" y1="287" x2="100" y2="300" stroke="#C4A028" stroke-width="0.7" opacity="0.4"/>
+
+  <!-- Wine name text -->
+  <rect x="73" y="308" width="54" height="3.5" rx="1" fill="#3D5C3A" opacity="0.6"/>
+  <rect x="77" y="314" width="46" height="3" rx="1" fill="#3D5C3A" opacity="0.45"/>
+
+  <!-- Decorative line -->
+  <line x1="72" y1="320" x2="128" y2="320" stroke="#C4A028" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- Vintage year -->
+  <rect x="84" y="324" width="32" height="4" rx="1" fill="#C4A028" opacity="0.55"/>
+
+  <!-- RESERVE text line -->
+  <rect x="78" y="331" width="44" height="3" rx="1" fill="#3D5C3A" opacity="0.35"/>
+
+  <!-- Bottom border line -->
+  <line x1="72" y1="337" x2="128" y2="337" stroke="#C4A028" stroke-width="1.2"/>
+
+  <!-- Region text at bottom -->
+  <rect x="82" y="341" width="36" height="2.5" rx="1" fill="#3D5C3A" opacity="0.3"/>
+
+  <!-- Bottom edge glass highlight -->
+  <ellipse cx="100" cy="428" rx="38" ry="4" fill="#fff" opacity="0.05"/>
 </svg>

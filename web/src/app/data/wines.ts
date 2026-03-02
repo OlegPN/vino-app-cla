@@ -67,7 +67,7 @@ export const wines: Wine[] = [
     country: 'Россия',
     grapes: ['Вионье'],
     description: 'Элегантное белое вино с ароматами белых цветов, персика и абрикоса. Нежная кислотность и долгое послевкусие.',
-    image: '/images/wine-white.svg',
+    image: '/images/wine-white-gai.webp',
     flavors: ['Персик', 'Абрикос', 'Белые цветы', 'Мёд'],
     alcohol: 13.0,
     inCollection: true,
