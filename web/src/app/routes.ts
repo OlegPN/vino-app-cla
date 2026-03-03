@@ -7,6 +7,7 @@ import More from './pages/More';
 import WineDetail from './pages/WineDetail';
 import WineryDetail from './pages/WineryDetail';
 import Journal from './pages/Journal';
+import ArticleDetail from './pages/ArticleDetail';
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: 'more', Component: More },
       { path: 'wine/:id', Component: WineDetail },
       { path: 'winery/:id', Component: WineryDetail },
+      { path: 'article/:id', Component: ArticleDetail },
     ],
   },
 ]);

@@ -1,20 +1,8 @@
+import { useNavigate } from 'react-router';
+import { articles } from '../data/articles';
+
 export default function Journal() {
-  const articles = [
-    {
-      id: 1,
-      category: 'ИСТОРИЯ',
-      title: 'Люсьен Оливье: не только салат',
-      readTime: '5 мин',
-      image: 'https://0d314c86-f76b-45cc-874e-45816116a667.selcdn.net/79a9b6bb-73b4-4056-bd44-54717f01f4d8.jpg',
-    },
-    {
-      id: 2,
-      category: 'ВИНОДЕЛЬНЯ',
-      title: 'Виноделческая династия Мело: как оставаться на плаву 500 лет',
-      readTime: '7 мин',
-      image: 'https://0d314c86-f76b-45cc-874e-45816116a667.selcdn.net/483807fd-65e6-4e3f-970e-69700516a6d6.jpg',
-    },
-  ];
+  const navigate = useNavigate();
 
   return (
     <div
@@ -45,6 +33,7 @@ export default function Journal() {
             key={article.id}
             className="rounded-2xl overflow-hidden cursor-pointer relative"
             style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
+            onClick={() => navigate(`/article/${article.id}`)}
           >
             <img
               src={article.image}
@@ -66,7 +55,7 @@ export default function Journal() {
                 {article.title}
               </h3>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
-                {article.readTime} · Snob
+                {article.readTime} · {article.author}
               </p>
             </div>
           </div>

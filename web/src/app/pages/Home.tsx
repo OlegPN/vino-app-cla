@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { useNavigate } from 'react-router';
 import { wines } from '../data/wines';
+import { articles } from '../data/articles';
 import { WineCard } from '../components/WineCard';
 
 const priceFilters = [
@@ -119,70 +120,46 @@ export default function Home() {
           <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>
             Про вино
           </h2>
-          <button style={{ color: '#722F37', fontSize: 14, fontWeight: 600 }}>
+          <button
+            style={{ color: '#722F37', fontSize: 14, fontWeight: 600 }}
+            onClick={() => navigate('/journal')}
+          >
             Все статьи
           </button>
         </div>
 
-        {/* Article 1 */}
-        <div
-          className="mx-4 mb-3 rounded-2xl overflow-hidden cursor-pointer relative"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
-        >
-          <img
-            src="https://0d314c86-f76b-45cc-874e-45816116a667.selcdn.net/79a9b6bb-73b4-4056-bd44-54717f01f4d8.jpg"
-            alt="Люсьен Оливье: не только салат"
-            className="w-full object-cover"
-            style={{ height: 180 }}
-          />
+        {articles.map((article, idx) => (
           <div
-            className="absolute inset-0 flex flex-col justify-end p-4"
-            style={{ background: 'linear-gradient(to bottom, transparent 10%, rgba(20,10,10,0.78) 100%)' }}
+            key={article.id}
+            className={`mx-4 ${idx < articles.length - 1 ? 'mb-3' : ''} rounded-2xl overflow-hidden cursor-pointer relative`}
+            style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
+            onClick={() => navigate(`/article/${article.id}`)}
           >
-            <span
-              className="rounded-full px-2 py-0.5 mb-2 self-start"
-              style={{ background: '#722F37', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}
+            <img
+              src={article.image}
+              alt={article.title}
+              className="w-full object-cover"
+              style={{ height: 180 }}
+            />
+            <div
+              className="absolute inset-0 flex flex-col justify-end p-4"
+              style={{ background: 'linear-gradient(to bottom, transparent 10%, rgba(20,10,10,0.78) 100%)' }}
             >
-              ИСТОРИЯ
-            </span>
-            <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 700, lineHeight: 1.3 }}>
-              Люсьен Оливье: не только салат
-            </h3>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
-              5 мин · Snob
-            </p>
+              <span
+                className="rounded-full px-2 py-0.5 mb-2 self-start"
+                style={{ background: '#722F37', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}
+              >
+                {article.category}
+              </span>
+              <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 700, lineHeight: 1.3 }}>
+                {article.title}
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
+                {article.readTime} · Snob
+              </p>
+            </div>
           </div>
-        </div>
-
-        {/* Article 2 */}
-        <div
-          className="mx-4 rounded-2xl overflow-hidden cursor-pointer relative"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}
-        >
-          <img
-            src="https://0d314c86-f76b-45cc-874e-45816116a667.selcdn.net/483807fd-65e6-4e3f-970e-69700516a6d6.jpg"
-            alt="Виноделческая династия Мело"
-            className="w-full object-cover"
-            style={{ height: 180 }}
-          />
-          <div
-            className="absolute inset-0 flex flex-col justify-end p-4"
-            style={{ background: 'linear-gradient(to bottom, transparent 10%, rgba(20,10,10,0.78) 100%)' }}
-          >
-            <span
-              className="rounded-full px-2 py-0.5 mb-2 self-start"
-              style={{ background: '#722F37', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}
-            >
-              ВИНОДЕЛЬНЯ
-            </span>
-            <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 700, lineHeight: 1.3 }}>
-              Виноделческая династия Мело: как оставаться на плаву 500 лет
-            </h3>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 }}>
-              7 мин · Snob
-            </p>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Recently Added */}

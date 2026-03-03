@@ -16,9 +16,12 @@ export default function MyWines() {
 
   const collection = wines.filter((w) => w.inCollection);
   const wishlist = wines.filter((w) => w.wishlist);
+  const history = wines;
 
   const currentList =
-    activeTab === 'collection' ? collection : activeTab === 'wishlist' ? wishlist : [];
+    activeTab === 'collection' ? collection :
+    activeTab === 'wishlist' ? wishlist :
+    history;
 
   return (
     <div
@@ -29,7 +32,11 @@ export default function MyWines() {
       <div className="px-4 pt-6 pb-4" style={{ background: '#fff' }}>
         <div className="flex items-center justify-between mb-4">
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a' }}>Мои вина</h1>
-          <button className="flex items-center gap-1.5 px-3 py-2 rounded-full" style={{ background: '#722F37' }}>
+          <button
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full"
+            style={{ background: '#722F37' }}
+            onClick={() => navigate('/explore')}
+          >
             <PlusCircle size={16} color="#fff" />
             <span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>Добавить</span>
           </button>
@@ -83,9 +90,7 @@ export default function MyWines() {
             <p style={{ color: '#888', fontSize: 14 }}>
               {activeTab === 'collection'
                 ? 'Ваша коллекция пуста. Добавьте вина!'
-                : activeTab === 'wishlist'
-                ? 'Список желаемого пуст.'
-                : 'История дегустаций пуста.'}
+                : 'Список желаемого пуст.'}
             </p>
             <button
               className="mt-4 px-6 py-2 rounded-full"
