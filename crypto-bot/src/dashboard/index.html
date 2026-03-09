@@ -39,6 +39,13 @@
   .ctrl-btn.switching{background:rgba(255,214,0,.08);border-color:var(--yellow);color:var(--yellow);box-shadow:0 0 10px rgba(255,214,0,.2);animation:pulse .7s infinite;pointer-events:none}
   .ctrl-divider{width:1px;background:var(--border);margin:0 4px}
 
+  /* Toast уведомления */
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 20px;font-size:12px;color:#fff;z-index:999;transition:transform .3s ease;pointer-events:none;white-space:nowrap}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.warn{border-color:var(--yellow);color:var(--yellow);box-shadow:0 0 15px rgba(255,214,0,.2)}
+  #toast.error{border-color:var(--red);color:var(--red);box-shadow:0 0 15px rgba(255,23,68,.2)}
+  #toast.info{border-color:var(--accent);color:var(--accent);box-shadow:0 0 15px rgba(0,212,255,.2)}
+
   /* Grid */
   .grid3{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
   .grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px}
@@ -131,6 +138,7 @@
 </style>
 </head>
 <body>
+<div id="toast"></div>
 <div class="container">
 
   <!-- Header -->
@@ -311,6 +319,18 @@
 
   function fmt(n, d=2){ return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}); }
   function fmtTime(ts){ const d=new Date(ts); return d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+
+  let toastTimer = null;
+  function showToast(text, level='warn') {
+    const el = document.getElementById('toast');
+    if (toastTimer) clearTimeout(toastTimer);
+    el.textContent = text;
+    el.className = 'show ' + level;
+    toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+    // Сбрасываем pending-анимацию если был заблокирован switch
+    if (pendingPair) { clearTimeout(pendingPairTimer); pendingPair = null; renderPairBtns(); }
+    if (pendingStrategy) { clearTimeout(pendingStratTimer); pendingStrategy = null; renderStratBtns(); }
+  }
 
   function sendCmd(type, value) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type, value}));
@@ -555,6 +575,7 @@
         renderPairBtns();
         renderStratBtns();
       }
+      if (msg.type === 'notify') showToast(msg.text, msg.level || 'warn');
     };
 
     ws.onclose = () => {

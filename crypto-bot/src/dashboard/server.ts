@@ -44,6 +44,7 @@ export interface BotState {
   pnl: PnLStats;
   lastUpdate: number;
   status: 'running' | 'error' | 'waiting';
+  notification?: { text: string; level: 'info' | 'warn' | 'error' };
 }
 
 type CommandHandler = (cmd: { type: string; value: string }) => void;
@@ -101,6 +102,10 @@ function broadcast(msg: object) {
 export function updateState(partial: Partial<BotState>) {
   currentState = { ...currentState, ...partial, lastUpdate: Date.now() };
   broadcast({ type: 'state', data: currentState });
+}
+
+export function sendNotification(text: string, level: 'info' | 'warn' | 'error' = 'warn') {
+  broadcast({ type: 'notify', text, level });
 }
 
 export function onCommand(handler: CommandHandler) {

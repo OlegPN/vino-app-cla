@@ -11,7 +11,7 @@ import { scalpingStrategy } from './strategies/scalping';
 import { RiskManager } from './risk/manager';
 import { PnLTracker } from './risk/pnlTracker';
 import { logger } from './utils/logger';
-import { startDashboard, updateState, onCommand, StrategyName, AVAILABLE_PAIRS } from './dashboard/server';
+import { startDashboard, updateState, sendNotification, onCommand, StrategyName, AVAILABLE_PAIRS } from './dashboard/server';
 import type { TradeSignal } from './strategies/hybrid';
 
 const DASHBOARD_PORT = 4200;
@@ -212,6 +212,7 @@ async function main() {
     if (cmd.type === 'setPair' && AVAILABLE_PAIRS.includes(cmd.value)) {
       if (riskManager.hasOpenPosition()) {
         logger.warn('Закрой позицию перед сменой пары');
+        sendNotification('Закройте активную позицию перед сменой пары', 'warn');
         return;
       }
       logger.info(`Смена пары: ${currentPair} → ${cmd.value}`);
