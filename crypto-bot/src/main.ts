@@ -18,6 +18,7 @@ let currentPair = process.env.TRADING_PAIR || 'BTC/USDT';
 let currentStrategy: StrategyName = (process.env.STRATEGY as StrategyName) || 'hybrid';
 let TIMEFRAME = '1h';
 let isRunning = false;
+let cycleVersion = 0; // инкрементируется при restartCycle, чтобы прервать старый цикл
 
 const binance = new BinanceClient();
 const riskManager = new RiskManager();
@@ -39,6 +40,7 @@ function runSignal(strategy: StrategyName, ind: ReturnType<typeof calculateIndic
 async function runCycle() {
   if (isRunning) return;
   isRunning = true;
+  const myVersion = cycleVersion; // запоминаем версию — если сменится, прерываем цикл
 
   try {
     const pair = currentPair;
@@ -52,6 +54,9 @@ async function runCycle() {
       binance.getOrderBook(pair, 20),
       binance.getTicker(pair),
     ]);
+
+    // Если пара/стратегия сменилась пока мы ждали — выходим
+    if (myVersion !== cycleVersion) { isRunning = false; return; }
 
     const price = ticker.last;
     const priceChange24h = ticker.percentage ?? 0;
@@ -71,6 +76,7 @@ async function runCycle() {
         orderBookImbalance: obMetrics.imbalance,
       };
       const sentiment = await analyzeSentiment(context);
+      if (myVersion !== cycleVersion) { isRunning = false; return; } // прерываем после медленного LLM
       tradeSignal = combineSignals(indicators, obMetrics, price, sentiment);
       llmReason = sentiment.reasoning;
     } else {
@@ -155,6 +161,8 @@ let cycleTimer: ReturnType<typeof setInterval>;
 
 function restartCycle() {
   clearInterval(cycleTimer);
+  cycleVersion++;   // инвалидируем текущий цикл — он сам прервётся
+  isRunning = false; // немедленно разрешаем запуск нового цикла
   const ms = getCycleInterval();
   logger.info(`Цикл: каждые ${ms / 1000}с | Пара: ${currentPair} | Стратегия: ${currentStrategy}`);
   runCycle();
@@ -169,17 +177,21 @@ async function main() {
   // Команды из браузера
   onCommand((cmd) => {
     if (cmd.type === 'setPair' && AVAILABLE_PAIRS.includes(cmd.value)) {
-      logger.info(`Смена пары: ${currentPair} → ${cmd.value}`);
       if (riskManager.hasOpenPosition()) {
         logger.warn('Закрой позицию перед сменой пары');
         return;
       }
+      logger.info(`Смена пары: ${currentPair} → ${cmd.value}`);
       currentPair = cmd.value;
+      // Мгновенная реакция UI — не ждём завершения цикла
+      updateState({ pair: cmd.value, status: 'waiting', signal: 'WAITING', signalConfidence: 0, price: 0, priceChange24h: 0 });
       restartCycle();
     }
     if (cmd.type === 'setStrategy') {
       logger.info(`Смена стратегии: ${currentStrategy} → ${cmd.value}`);
       currentStrategy = cmd.value as StrategyName;
+      // Мгновенная реакция UI
+      updateState({ strategy: cmd.value as StrategyName, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
       restartCycle();
     }
   });

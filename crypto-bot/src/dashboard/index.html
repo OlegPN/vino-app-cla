@@ -36,6 +36,7 @@
   .ctrl-btn:hover{border-color:var(--accent);color:var(--accent)}
   .ctrl-btn.active{background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent);box-shadow:0 0 10px rgba(0,212,255,.15)}
   .ctrl-btn.strat-active{background:rgba(124,77,255,.1);border-color:var(--purple);color:var(--purple);box-shadow:0 0 10px rgba(124,77,255,.15)}
+  .ctrl-btn.switching{background:rgba(255,214,0,.08);border-color:var(--yellow);color:var(--yellow);box-shadow:0 0 10px rgba(255,214,0,.2);animation:pulse .7s infinite;pointer-events:none}
   .ctrl-divider{width:1px;background:var(--border);margin:0 4px}
 
   /* Grid */
@@ -302,6 +303,8 @@
   let availableStrategies = [];
   let currentPair = 'BTC/USDT';
   let currentStrategy = 'hybrid';
+  let pendingPair = null;      // пара в процессе переключения
+  let pendingStrategy = null;  // стратегия в процессе переключения
   let ws;
 
   function fmt(n, d=2){ return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}); }
@@ -313,26 +316,36 @@
 
   function renderPairBtns() {
     const el = document.getElementById('pairBtns');
-    el.innerHTML = availablePairs.map(p =>
-      `<button class="ctrl-btn${p===currentPair?' active':''}" onclick="selectPair('${p}')">${p.replace('/USDT','')}</button>`
-    ).join('');
+    el.innerHTML = availablePairs.map(p => {
+      const isSwitching = p === pendingPair;
+      const isActive = p === currentPair && !pendingPair;
+      const cls = isSwitching ? ' switching' : (isActive ? ' active' : '');
+      const label = isSwitching ? p.replace('/USDT','') + ' ⟳' : p.replace('/USDT','');
+      return `<button class="ctrl-btn${cls}" onclick="selectPair('${p}')">${label}</button>`;
+    }).join('');
   }
 
   function renderStratBtns() {
     const el = document.getElementById('stratBtns');
-    el.innerHTML = availableStrategies.map(s =>
-      `<button class="ctrl-btn${s.id===currentStrategy?' strat-active':''}" onclick="selectStrategy('${s.id}')" title="${s.desc}">${s.label}</button>`
-    ).join('');
+    el.innerHTML = availableStrategies.map(s => {
+      const isSwitching = s.id === pendingStrategy;
+      const isActive = s.id === currentStrategy && !pendingStrategy;
+      const cls = isSwitching ? ' switching' : (isActive ? ' strat-active' : '');
+      const label = isSwitching ? s.label + ' ⟳' : s.label;
+      return `<button class="ctrl-btn${cls}" onclick="selectStrategy('${s.id}')" title="${s.desc}">${label}</button>`;
+    }).join('');
   }
 
   function selectPair(pair) {
-    currentPair = pair;
+    if (pair === currentPair || pendingPair) return; // не двойное нажатие
+    pendingPair = pair;
     renderPairBtns();
     sendCmd('setPair', pair);
   }
 
   function selectStrategy(id) {
-    currentStrategy = id;
+    if (id === currentStrategy || pendingStrategy) return;
+    pendingStrategy = id;
     renderStratBtns();
     sendCmd('setStrategy', id);
   }
@@ -372,9 +385,17 @@
   }
 
   function applyState(s) {
-    // Обновляем активные кнопки
-    if (s.pair && s.pair !== currentPair) { currentPair = s.pair; renderPairBtns(); }
-    if (s.strategy && s.strategy !== currentStrategy) { currentStrategy = s.strategy; renderStratBtns(); }
+    // Обновляем активные кнопки — сбрасываем pending если сервер подтвердил
+    if (s.pair) {
+      if (s.pair !== currentPair) { currentPair = s.pair; }
+      if (pendingPair === s.pair) { pendingPair = null; }
+      renderPairBtns();
+    }
+    if (s.strategy) {
+      if (s.strategy !== currentStrategy) { currentStrategy = s.strategy; }
+      if (pendingStrategy === s.strategy) { pendingStrategy = null; }
+      renderStratBtns();
+    }
 
     // Пара + стратегия
     if (s.pair) document.getElementById('pairLabel').textContent = s.pair + ' · TESTNET';
