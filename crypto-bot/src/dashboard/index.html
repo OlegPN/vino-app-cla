@@ -385,15 +385,21 @@
   }
 
   function applyState(s) {
-    // Обновляем активные кнопки — сбрасываем pending если сервер подтвердил
+    // Защита от устаревших данных: если ждём переключения на другую пару — игнорируем
+    // данные старой пары (кроме status:'waiting' — это мгновенный ack от сервера)
+    if (pendingPair && s.pair && s.pair !== pendingPair && s.status !== 'waiting') return;
+    if (pendingStrategy && s.strategy && s.strategy !== pendingStrategy && s.status !== 'waiting') return;
+
+    // Обновляем активные кнопки
     if (s.pair) {
-      if (s.pair !== currentPair) { currentPair = s.pair; }
-      if (pendingPair === s.pair) { pendingPair = null; }
+      currentPair = s.pair;
+      // Снимаем "switching" анимацию только когда пришли реальные данные (running)
+      if (pendingPair === s.pair && s.status === 'running') pendingPair = null;
       renderPairBtns();
     }
     if (s.strategy) {
-      if (s.strategy !== currentStrategy) { currentStrategy = s.strategy; }
-      if (pendingStrategy === s.strategy) { pendingStrategy = null; }
+      currentStrategy = s.strategy;
+      if (pendingStrategy === s.strategy && s.status === 'running') pendingStrategy = null;
       renderStratBtns();
     }
 

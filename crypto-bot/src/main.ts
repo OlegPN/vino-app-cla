@@ -115,6 +115,8 @@ async function runCycle() {
 
     // Баланс
     const balance = await binance.getBalance();
+    // Проверяем после каждого await — пара могла смениться
+    if (myVersion !== cycleVersion) { isRunning = false; return; }
     pnlTracker.setStartBalance(balance.USDT || 0);
 
     // Позиция
@@ -136,6 +138,8 @@ async function runCycle() {
     } else if (tradeSignal.signal === 'BUY' && tradeSignal.confidence >= 0.25) {
       const usdtBalance = balance.USDT || 0;
       if (usdtBalance >= 10) {
+        // Финальная проверка перед торговой операцией — не торгуем на старой паре
+        if (myVersion !== cycleVersion) { isRunning = false; return; }
         const maxUsdt = Math.min(usdtBalance * 0.95, Number(process.env.MAX_POSITION_SIZE_USDT) || 100);
         const quantity = riskManager.calculatePositionSize(usdtBalance, price);
         await binance.placeMarketBuy(pair, maxUsdt);
@@ -145,6 +149,9 @@ async function runCycle() {
         posState = { active: true, ...newPos, pnl: 0 };
       }
     }
+
+    // Финальная проверка перед отправкой в дашборд — не затираем актуальное состояние
+    if (myVersion !== cycleVersion) { isRunning = false; return; }
 
     // Обновляем дашборд
     const pnlStats = pnlTracker.getStats(balance.USDT || 0);
