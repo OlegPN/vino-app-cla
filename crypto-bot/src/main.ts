@@ -3,63 +3,91 @@ import { BinanceClient } from './exchange/binance';
 import { calculateIndicators, analyzeOrderBook } from './data/indicators';
 import { analyzeSentiment, MarketContext } from './llm/sentiment';
 import { combineSignals } from './strategies/hybrid';
+import { trendStrategy } from './strategies/trend';
+import { meanReversionStrategy } from './strategies/meanReversion';
+import { scalpingStrategy } from './strategies/scalping';
 import { RiskManager } from './risk/manager';
+import { PnLTracker } from './risk/pnlTracker';
 import { logger } from './utils/logger';
-import { startDashboard, updateState, addTrade } from './dashboard/server';
+import { startDashboard, updateState, onCommand, StrategyName, AVAILABLE_PAIRS } from './dashboard/server';
+import type { TradeSignal } from './strategies/hybrid';
 
-const SYMBOL = process.env.TRADING_PAIR || 'BTC/USDT';
-const TIMEFRAME = process.env.TIMEFRAME || '1h';
-const INTERVAL_MS = 60_000;
 const DASHBOARD_PORT = 4200;
+
+let currentPair = process.env.TRADING_PAIR || 'BTC/USDT';
+let currentStrategy: StrategyName = (process.env.STRATEGY as StrategyName) || 'hybrid';
+let TIMEFRAME = '1h';
+let isRunning = false;
 
 const binance = new BinanceClient();
 const riskManager = new RiskManager();
+const pnlTracker = new PnLTracker();
+
+function getTimeframe(strategy: StrategyName): string {
+  return strategy === 'scalping' ? '5m' : '1h';
+}
+
+function runSignal(strategy: StrategyName, ind: ReturnType<typeof calculateIndicators>, obm: ReturnType<typeof analyzeOrderBook>, price: number): TradeSignal {
+  switch (strategy) {
+    case 'trend':        return trendStrategy(ind, obm, price);
+    case 'meanReversion': return meanReversionStrategy(ind, obm, price);
+    case 'scalping':     return scalpingStrategy(ind, obm, price);
+    default:             return { signal: 'HOLD', confidence: 0, mlScore: 0, llmScore: 0, finalScore: 0, reasons: [] };
+  }
+}
 
 async function runCycle() {
-  try {
-    logger.info(`--- Цикл анализа ${SYMBOL} ---`);
+  if (isRunning) return;
+  isRunning = true;
 
-    // 1. Данные
+  try {
+    const pair = currentPair;
+    const strategy = currentStrategy;
+    TIMEFRAME = getTimeframe(strategy);
+
+    logger.info(`--- ${pair} | ${strategy} | ${TIMEFRAME} ---`);
+
     const [candles, orderBook, ticker] = await Promise.all([
-      binance.getOHLCV(SYMBOL, TIMEFRAME, 200),
-      binance.getOrderBook(SYMBOL, 20),
-      binance.getTicker(SYMBOL),
+      binance.getOHLCV(pair, TIMEFRAME, 200),
+      binance.getOrderBook(pair, 20),
+      binance.getTicker(pair),
     ]);
 
     const price = ticker.last;
     const priceChange24h = ticker.percentage ?? 0;
-
-    // 2. Индикаторы
     const indicators = calculateIndicators(candles);
     const obMetrics = analyzeOrderBook(orderBook);
 
-    // 3. LLM анализ
-    const context: MarketContext = {
-      symbol: SYMBOL,
-      price,
-      priceChange24h,
-      rsi: indicators.rsi,
-      macdHistogram: indicators.macd.histogram,
-      volumeRatio: indicators.volume_ratio,
-      orderBookImbalance: obMetrics.imbalance,
-    };
-    const sentiment = await analyzeSentiment(context);
+    // Выбираем стратегию
+    let tradeSignal: TradeSignal;
+    let llmReason = '';
 
-    // 4. Сигнал
-    const tradeSignal = combineSignals(indicators, obMetrics, price, sentiment);
+    if (strategy === 'hybrid') {
+      const context: MarketContext = {
+        symbol: pair, price, priceChange24h,
+        rsi: indicators.rsi,
+        macdHistogram: indicators.macd.histogram,
+        volumeRatio: indicators.volume_ratio,
+        orderBookImbalance: obMetrics.imbalance,
+      };
+      const sentiment = await analyzeSentiment(context);
+      tradeSignal = combineSignals(indicators, obMetrics, price, sentiment);
+      llmReason = sentiment.reasoning;
+    } else {
+      tradeSignal = runSignal(strategy, indicators, obMetrics, price);
+      llmReason = tradeSignal.reasons.join('. ');
+    }
 
-    logger.info(`Цена: $${price} | RSI: ${indicators.rsi.toFixed(1)} | Сигнал: ${tradeSignal.signal} (${(tradeSignal.confidence * 100).toFixed(0)}%)`);
+    logger.info(`Цена: $${price} | Сигнал: ${tradeSignal.signal} (${(tradeSignal.confidence * 100).toFixed(0)}%)`);
     tradeSignal.reasons.forEach(r => logger.info(`  → ${r}`));
 
-    // 5. Баланс для дашборда
+    // Баланс
     const balance = await binance.getBalance();
+    pnlTracker.setStartBalance(balance.USDT || 0);
 
-    // 6. Позиция
+    // Позиция
     const pos = riskManager.getPosition();
-    let posState = { active: false } as {
-      active: boolean; entryPrice?: number; quantity?: number;
-      stopLoss?: number; takeProfit?: number; pnl?: number; openedAt?: number;
-    };
+    let posState: BotState['position'] = { active: false };
 
     if (pos) {
       const pnl = (price - pos.entryPrice) * pos.quantity;
@@ -67,31 +95,31 @@ async function runCycle() {
 
       const { close, reason } = riskManager.shouldClose(price);
       if (close) {
-        logger.info(`Закрываем позицию: ${reason}`);
-        await binance.placeMarketSell(SYMBOL, pos.quantity);
-        addTrade({ time: Date.now(), side: 'SELL', price, quantity: pos.quantity, pnl, reason });
+        logger.info(`Закрываем: ${reason}`);
+        await binance.placeMarketSell(pair, pos.quantity);
+        pnlTracker.addSell(pair, strategy, price, pos.quantity, pos.entryPrice, reason);
         riskManager.closePosition();
         posState = { active: false };
       }
-    } else if (tradeSignal.signal === 'BUY' && tradeSignal.confidence >= 0.3) {
+    } else if (tradeSignal.signal === 'BUY' && tradeSignal.confidence >= 0.25) {
       const usdtBalance = balance.USDT || 0;
       if (usdtBalance >= 10) {
         const maxUsdt = Math.min(usdtBalance * 0.95, Number(process.env.MAX_POSITION_SIZE_USDT) || 100);
         const quantity = riskManager.calculatePositionSize(usdtBalance, price);
-        logger.info(`BUY: ${quantity.toFixed(5)} BTC @ $${price}`);
-        await binance.placeMarketBuy(SYMBOL, maxUsdt);
-        riskManager.openPosition(SYMBOL, price, quantity);
-        addTrade({ time: Date.now(), side: 'BUY', price, quantity });
+        await binance.placeMarketBuy(pair, maxUsdt);
+        riskManager.openPosition(pair, price, quantity);
+        pnlTracker.addBuy(pair, strategy, price, quantity);
         const newPos = riskManager.getPosition()!;
         posState = { active: true, ...newPos, pnl: 0 };
       }
     }
 
-    // 7. Обновляем дашборд
+    // Обновляем дашборд
+    const pnlStats = pnlTracker.getStats(balance.USDT || 0);
+
     updateState({
-      pair: SYMBOL,
-      price,
-      priceChange24h,
+      pair, strategy,
+      price, priceChange24h,
       rsi: indicators.rsi,
       macd: indicators.macd.histogram,
       ema20: indicators.ema20,
@@ -102,35 +130,73 @@ async function runCycle() {
       signalConfidence: tradeSignal.confidence,
       mlScore: tradeSignal.mlScore,
       llmScore: tradeSignal.llmScore,
-      llmReason: sentiment.reasoning,
-      balance: { USDT: balance.USDT || 0, BTC: balance.BTC || 0 },
+      llmReason,
+      balance: { USDT: balance.USDT || 0, ...(balance[pair.split('/')[0]] ? { [pair.split('/')[0]]: balance[pair.split('/')[0]] } : {}) },
       position: posState,
+      trades: pnlTracker.getRecentTrades(20),
+      pnl: pnlStats,
       status: 'running',
     });
 
   } catch (err) {
-    logger.error(`Ошибка цикла: ${err}`);
+    logger.error(`Ошибка: ${err}`);
     updateState({ status: 'error' });
+  } finally {
+    isRunning = false;
   }
+}
+
+// Интервал зависит от стратегии
+function getCycleInterval(): number {
+  return currentStrategy === 'scalping' ? 15_000 : 60_000;
+}
+
+let cycleTimer: ReturnType<typeof setInterval>;
+
+function restartCycle() {
+  clearInterval(cycleTimer);
+  const ms = getCycleInterval();
+  logger.info(`Цикл: каждые ${ms / 1000}с | Пара: ${currentPair} | Стратегия: ${currentStrategy}`);
+  runCycle();
+  cycleTimer = setInterval(runCycle, ms);
 }
 
 async function main() {
   logger.info('=== CryptoAI Bot запущен ===');
-  logger.info(`Пара: ${SYMBOL} | Таймфрейм: ${TIMEFRAME}`);
 
   startDashboard(DASHBOARD_PORT);
 
+  // Команды из браузера
+  onCommand((cmd) => {
+    if (cmd.type === 'setPair' && AVAILABLE_PAIRS.includes(cmd.value)) {
+      logger.info(`Смена пары: ${currentPair} → ${cmd.value}`);
+      if (riskManager.hasOpenPosition()) {
+        logger.warn('Закрой позицию перед сменой пары');
+        return;
+      }
+      currentPair = cmd.value;
+      restartCycle();
+    }
+    if (cmd.type === 'setStrategy') {
+      logger.info(`Смена стратегии: ${currentStrategy} → ${cmd.value}`);
+      currentStrategy = cmd.value as StrategyName;
+      restartCycle();
+    }
+  });
+
   try {
     const balance = await binance.getBalance();
-    logger.info(`USDT: ${balance.USDT} | BTC: ${balance.BTC || 0}`);
-    updateState({ balance: { USDT: balance.USDT || 0, BTC: balance.BTC || 0 } });
+    logger.info(`USDT: ${balance.USDT} | ${currentPair.split('/')[0]}: ${balance[currentPair.split('/')[0]] || 0}`);
+    pnlTracker.setStartBalance(balance.USDT || 0);
   } catch (err) {
     logger.error(`Ошибка подключения: ${err}`);
     process.exit(1);
   }
 
-  await runCycle();
-  setInterval(runCycle, INTERVAL_MS);
+  restartCycle();
 }
+
+// Типы для updateState
+type BotState = Parameters<typeof updateState>[0] & { pair: string; strategy: StrategyName };
 
 main();
