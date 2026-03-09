@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { BinanceClient } from './exchange/binance';
 import { calculateIndicators, analyzeOrderBook } from './data/indicators';
 import { analyzeSentiment, MarketContext } from './llm/sentiment';
@@ -13,9 +15,33 @@ import { startDashboard, updateState, onCommand, StrategyName, AVAILABLE_PAIRS }
 import type { TradeSignal } from './strategies/hybrid';
 
 const DASHBOARD_PORT = 4200;
+const BOT_STATE_FILE = path.join('logs', 'bot-settings.json');
 
-let currentPair = process.env.TRADING_PAIR || 'BTC/USDT';
-let currentStrategy: StrategyName = (process.env.STRATEGY as StrategyName) || 'hybrid';
+// Загружаем сохранённые настройки или берём из .env
+function loadSettings(): { pair: string; strategy: StrategyName } {
+  try {
+    if (fs.existsSync(BOT_STATE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(BOT_STATE_FILE, 'utf-8'));
+      const validStrategies: StrategyName[] = ['hybrid', 'trend', 'meanReversion', 'scalping'];
+      const pair = AVAILABLE_PAIRS.includes(data.pair) ? data.pair : (process.env.TRADING_PAIR || 'BTC/USDT');
+      const strategy = validStrategies.includes(data.strategy) ? data.strategy : ((process.env.STRATEGY as StrategyName) || 'hybrid');
+      logger.info(`Восстановлены настройки: ${pair} | ${strategy}`);
+      return { pair, strategy };
+    }
+  } catch { /* файла нет, используем дефолты */ }
+  return { pair: process.env.TRADING_PAIR || 'BTC/USDT', strategy: (process.env.STRATEGY as StrategyName) || 'hybrid' };
+}
+
+function saveSettings() {
+  try {
+    fs.mkdirSync('logs', { recursive: true });
+    fs.writeFileSync(BOT_STATE_FILE, JSON.stringify({ pair: currentPair, strategy: currentStrategy, updatedAt: Date.now() }, null, 2));
+  } catch (e) { logger.warn(`Не удалось сохранить настройки: ${e}`); }
+}
+
+const savedSettings = loadSettings();
+let currentPair = savedSettings.pair;
+let currentStrategy: StrategyName = savedSettings.strategy;
 let TIMEFRAME = '1h';
 let isRunning = false;
 let cycleVersion = 0; // инкрементируется при restartCycle, чтобы прервать старый цикл
@@ -183,6 +209,7 @@ async function main() {
       }
       logger.info(`Смена пары: ${currentPair} → ${cmd.value}`);
       currentPair = cmd.value;
+      saveSettings(); // сохраняем, чтобы не потерять при перезапуске
       // Мгновенная реакция UI — не ждём завершения цикла
       updateState({ pair: cmd.value, status: 'waiting', signal: 'WAITING', signalConfidence: 0, price: 0, priceChange24h: 0 });
       restartCycle();
@@ -190,6 +217,7 @@ async function main() {
     if (cmd.type === 'setStrategy') {
       logger.info(`Смена стратегии: ${currentStrategy} → ${cmd.value}`);
       currentStrategy = cmd.value as StrategyName;
+      saveSettings(); // сохраняем
       // Мгновенная реакция UI
       updateState({ strategy: cmd.value as StrategyName, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
       restartCycle();
