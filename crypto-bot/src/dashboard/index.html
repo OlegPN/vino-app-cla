@@ -303,8 +303,10 @@
   let availableStrategies = [];
   let currentPair = 'BTC/USDT';
   let currentStrategy = 'hybrid';
-  let pendingPair = null;      // пара в процессе переключения
-  let pendingStrategy = null;  // стратегия в процессе переключения
+  let pendingPair = null;
+  let pendingStrategy = null;
+  let pendingPairTimer = null;
+  let pendingStratTimer = null;
   let ws;
 
   function fmt(n, d=2){ return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}); }
@@ -337,17 +339,25 @@
   }
 
   function selectPair(pair) {
-    if (pair === currentPair || pendingPair) return; // не двойное нажатие
+    if (pair === currentPair && !pendingPair) return;
+    if (pendingPairTimer) clearTimeout(pendingPairTimer);
     pendingPair = pair;
+    currentPair = pair; // оптимистично обновляем — пара уже считается выбранной
     renderPairBtns();
     sendCmd('setPair', pair);
+    // Автоочистка через 20 сек если сервер не ответил
+    pendingPairTimer = setTimeout(() => { pendingPair = null; renderPairBtns(); }, 20000);
   }
 
   function selectStrategy(id) {
-    if (id === currentStrategy || pendingStrategy) return;
+    if (id === currentStrategy && !pendingStrategy) return;
+    if (pendingStratTimer) clearTimeout(pendingStratTimer);
     pendingStrategy = id;
+    currentStrategy = id; // оптимистично обновляем
     renderStratBtns();
     sendCmd('setStrategy', id);
+    // Автоочистка через 20 сек если сервер не ответил
+    pendingStratTimer = setTimeout(() => { pendingStrategy = null; renderStratBtns(); }, 20000);
   }
 
   function updateScore(fillId, numId, score) {
@@ -385,21 +395,25 @@
   }
 
   function applyState(s) {
-    // Защита от устаревших данных: если ждём переключения на другую пару — игнорируем
-    // данные старой пары (кроме status:'waiting' — это мгновенный ack от сервера)
-    if (pendingPair && s.pair && s.pair !== pendingPair && s.status !== 'waiting') return;
-    if (pendingStrategy && s.strategy && s.strategy !== pendingStrategy && s.status !== 'waiting') return;
+    // Игнорируем данные устаревшей пары пока ждём новую
+    // (но не waiting — это мгновенный ack)
+    if (pendingPair && s.pair && s.pair !== pendingPair && s.status === 'running') return;
 
-    // Обновляем активные кнопки
-    if (s.pair) {
+    // Снимаем анимацию переключения когда сервер подтвердил (running)
+    if (s.pair && s.status === 'running') {
+      if (pendingPair === s.pair) {
+        clearTimeout(pendingPairTimer);
+        pendingPair = null;
+      }
       currentPair = s.pair;
-      // Снимаем "switching" анимацию только когда пришли реальные данные (running)
-      if (pendingPair === s.pair && s.status === 'running') pendingPair = null;
       renderPairBtns();
     }
-    if (s.strategy) {
+    if (s.strategy && s.status === 'running') {
+      if (pendingStrategy === s.strategy) {
+        clearTimeout(pendingStratTimer);
+        pendingStrategy = null;
+      }
       currentStrategy = s.strategy;
-      if (pendingStrategy === s.strategy && s.status === 'running') pendingStrategy = null;
       renderStratBtns();
     }
 
