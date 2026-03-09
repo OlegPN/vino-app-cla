@@ -339,24 +339,21 @@
   }
 
   function selectPair(pair) {
-    if (pair === currentPair && !pendingPair) return;
+    if (pair === pendingPair) return; // уже переключаем на эту пару
     if (pendingPairTimer) clearTimeout(pendingPairTimer);
     pendingPair = pair;
-    currentPair = pair; // оптимистично обновляем — пара уже считается выбранной
     renderPairBtns();
     sendCmd('setPair', pair);
-    // Автоочистка через 20 сек если сервер не ответил
+    // Автоочистка через 20 сек — currentPair остаётся последним подтверждённым сервером
     pendingPairTimer = setTimeout(() => { pendingPair = null; renderPairBtns(); }, 20000);
   }
 
   function selectStrategy(id) {
-    if (id === currentStrategy && !pendingStrategy) return;
+    if (id === pendingStrategy) return; // уже переключаем на эту стратегию
     if (pendingStratTimer) clearTimeout(pendingStratTimer);
     pendingStrategy = id;
-    currentStrategy = id; // оптимистично обновляем
     renderStratBtns();
     sendCmd('setStrategy', id);
-    // Автоочистка через 20 сек если сервер не ответил
     pendingStratTimer = setTimeout(() => { pendingStrategy = null; renderStratBtns(); }, 20000);
   }
 
@@ -395,25 +392,24 @@
   }
 
   function applyState(s) {
-    // Игнорируем данные устаревшей пары пока ждём новую
-    // (но не waiting — это мгновенный ack)
+    // Отбрасываем running-данные от СТАРОЙ пары если ждём новую
     if (pendingPair && s.pair && s.pair !== pendingPair && s.status === 'running') return;
 
-    // Снимаем анимацию переключения когда сервер подтвердил (running)
-    if (s.pair && s.status === 'running') {
-      if (pendingPair === s.pair) {
+    // currentPair/Strategy всегда отражают то что говорит сервер
+    if (s.pair) {
+      currentPair = s.pair;
+      if (pendingPair === s.pair && s.status === 'running') {
         clearTimeout(pendingPairTimer);
         pendingPair = null;
       }
-      currentPair = s.pair;
       renderPairBtns();
     }
-    if (s.strategy && s.status === 'running') {
-      if (pendingStrategy === s.strategy) {
+    if (s.strategy) {
+      currentStrategy = s.strategy;
+      if (pendingStrategy === s.strategy && s.status === 'running') {
         clearTimeout(pendingStratTimer);
         pendingStrategy = null;
       }
-      currentStrategy = s.strategy;
       renderStratBtns();
     }
 
