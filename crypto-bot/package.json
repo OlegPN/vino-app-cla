@@ -1,0 +1,28 @@
+{
+  "name": "crypto-ai-bot",
+  "version": "1.0.0",
+  "description": "AI-powered crypto trading bot for Binance Testnet",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "tsx watch src/main.ts",
+    "test": "tsx src/backtester/run.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "ccxt": "^4.3.0",
+    "dotenv": "^16.4.0",
+    "express": "^5.2.1",
+    "technicalindicators": "^3.1.0",
+    "winston": "^3.13.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}

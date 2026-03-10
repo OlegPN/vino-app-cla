@@ -1,0 +1,16 @@
+services:
+  cryptoai-bot:
+    build: .
+    container_name: cryptoai-bot
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
