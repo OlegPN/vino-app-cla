@@ -172,6 +172,31 @@ export class BinanceClient {
     });
   }
 
+  async cancelAllOrders(symbol: string) {
+    try {
+      return await this.privateDelete('/api/v3/openOrders', {
+        symbol: symbol.replace('/', ''),
+      });
+    } catch (e) {
+      logger.warn(`cancelAllOrders ${symbol}: ${e}`);
+    }
+  }
+
+  // Размещает рыночный стоп-ордер на бирже (срабатывает точно по stopPrice)
+  async placeStopLoss(symbol: string, quantity: number, stopPrice: number) {
+    const qty = parseFloat(quantity.toFixed(5));
+    // stopPrice нужно округлить до 2 знаков для большинства пар
+    const sp = stopPrice.toFixed(2);
+    logger.info(`STOP_LOSS ордер: SELL ${qty} ${symbol} @ stopPrice $${sp}`);
+    return this.privatePost('/api/v3/order', {
+      symbol: symbol.replace('/', ''),
+      side: 'SELL',
+      type: 'STOP_LOSS',
+      quantity: String(qty),
+      stopPrice: sp,
+    });
+  }
+
   async getOpenOrders(symbol: string) {
     return this.privateGet('/api/v3/openOrders', {
       symbol: symbol.replace('/', ''),

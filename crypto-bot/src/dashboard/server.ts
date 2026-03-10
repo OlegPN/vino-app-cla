@@ -42,6 +42,7 @@ export interface BotState {
   };
   trades: TradeRecord[];
   pnl: PnLStats;
+  pairStrategies?: Record<string, StrategyName>;
   lastUpdate: number;
   status: 'running' | 'error' | 'waiting';
   notification?: { text: string; level: 'info' | 'warn' | 'error' };

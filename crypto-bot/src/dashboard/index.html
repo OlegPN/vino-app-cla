@@ -135,6 +135,64 @@
   .empty{color:var(--muted);font-size:11px;text-align:center;padding:16px}
   ::-webkit-scrollbar{width:3px}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+  /* ===== АДАПТИВ ===== */
+
+  /* Планшет (≤1100px): 4 колонки → 2×2 */
+  @media(max-width:1100px){
+    .grid4{grid-template-columns:1fr 1fr}
+  }
+
+  /* Мобильный (≤768px) */
+  @media(max-width:768px){
+    .container{padding:10px 8px}
+
+    /* Header: лого + статус в одну строку, контролы ниже */
+    .header{flex-direction:column;align-items:flex-start;gap:10px;position:relative}
+    .logo-text{font-size:14px}
+    .logo-sub{display:none}
+    .header-right{width:100%;flex-direction:column;align-items:flex-start;gap:6px}
+    .status-bar{position:absolute;top:2px;right:0;font-size:10px;gap:6px}
+    #lastUpdate{display:none} /* прячем время — экономим место */
+
+    /* Контролы — кнопки переносятся */
+    .controls{width:100%;flex-wrap:wrap;gap:4px}
+    .ctrl-group{flex-wrap:wrap;gap:4px;width:100%}
+    .ctrl-divider{display:none}
+
+    /* Гриды схлопываются */
+    .grid3{grid-template-columns:1fr}
+    .grid4{grid-template-columns:1fr 1fr}
+    .grid2{grid-template-columns:1fr}
+    .grid3b{grid-template-columns:1fr}
+
+    /* Карточки */
+    .card{padding:12px}
+
+    /* Цена */
+    .price-main{font-size:30px}
+    .price-change{font-size:13px}
+
+    /* Сигнал */
+    .signal-badge{font-size:22px;padding:8px 16px}
+
+    /* Сделки: перенос вместо горизонтального скролла */
+    .trade-item{flex-wrap:wrap;gap:5px 8px;padding:8px 10px}
+    .trade-price{margin-left:0}
+    .trade-list{max-height:300px}
+  }
+
+  /* Малый мобильный (≤480px): всё в одну колонку */
+  @media(max-width:480px){
+    .grid4{grid-template-columns:1fr}
+    .price-main{font-size:26px}
+    .stat-value{font-size:16px!important}
+    .bal-amount{font-size:16px}
+    .ind-value{font-size:15px}
+    .ctrl-btn{font-size:9px;padding:5px 8px}
+    .signal-badge{font-size:18px;letter-spacing:2px}
+    .strat-badge{display:none} /* прячем бейдж стратегии из заголовка */
+  }
 </style>
 </head>
 <body>
@@ -311,11 +369,13 @@
   let availableStrategies = [];
   let currentPair = 'BTC/USDT';
   let currentStrategy = 'hybrid';
+  let pairStrategies = {};
   let pendingPair = null;
   let pendingStrategy = null;
   let pendingPairTimer = null;
   let pendingStratTimer = null;
   let ws;
+  const STRAT_ABBR = { hybrid:'AI', trend:'TR', meanReversion:'MR', scalping:'SC' };
 
   function fmt(n, d=2){ return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}); }
   function fmtTime(ts){ const d=new Date(ts); return d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
@@ -342,7 +402,11 @@
       const isSwitching = p === pendingPair;
       const isActive = p === currentPair && !pendingPair;
       const cls = isSwitching ? ' switching' : (isActive ? ' active' : '');
-      const label = isSwitching ? p.replace('/USDT','') + ' ⟳' : p.replace('/USDT','');
+      const abbr = STRAT_ABBR[pairStrategies[p]] || '';
+      const base = p.replace('/USDT','');
+      const label = isSwitching
+        ? base + ' ⟳'
+        : base + (abbr ? `<span style="font-size:8px;opacity:.5;margin-left:3px">${abbr}</span>` : '');
       return `<button class="ctrl-btn${cls}" onclick="selectPair('${p}')">${label}</button>`;
     }).join('');
   }
@@ -362,6 +426,8 @@
     if (pair === pendingPair) return; // уже переключаем на эту пару
     if (pendingPairTimer) clearTimeout(pendingPairTimer);
     pendingPair = pair;
+    // Превью стратегии для новой пары — уже знаем из pairStrategies
+    if (pairStrategies[pair]) { currentStrategy = pairStrategies[pair]; renderStratBtns(); }
     renderPairBtns();
     sendCmd('setPair', pair);
     // Автоочистка через 20 сек — currentPair остаётся последним подтверждённым сервером
@@ -415,9 +481,16 @@
     // Отбрасываем running-данные от СТАРОЙ пары если ждём новую
     if (pendingPair && s.pair && s.pair !== pendingPair && s.status === 'running') return;
 
+    // Обновляем per-pair стратегии
+    if (s.pairStrategies) {
+      pairStrategies = s.pairStrategies;
+    }
+
     // currentPair/Strategy всегда отражают то что говорит сервер
     if (s.pair) {
       currentPair = s.pair;
+      // Синхронизируем currentStrategy с pairStrategies для актуальной пары
+      if (pairStrategies[s.pair]) currentStrategy = pairStrategies[s.pair];
       if (pendingPair === s.pair && s.status === 'running') {
         clearTimeout(pendingPairTimer);
         pendingPair = null;

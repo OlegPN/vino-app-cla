@@ -8,6 +8,7 @@ export interface Indicators {
   ema200: number;
   bbands: { upper: number; middle: number; lower: number };
   atr: number;
+  adx: number;         // ADX > 25 = сильный тренд, < 20 = боковик
   volume_ratio: number; // текущий объём vs средний
 }
 
@@ -61,6 +62,48 @@ function atr(candles: OHLCV[], period = 14): number {
   return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
 }
 
+// Wilder smoothing (используется в ADX)
+function wilderSmooth(values: number[], period: number): number {
+  let smoothed = values.slice(0, period).reduce((a, b) => a + b, 0);
+  for (let i = period; i < values.length; i++) {
+    smoothed = smoothed - smoothed / period + values[i];
+  }
+  return smoothed;
+}
+
+// ADX (Average Directional Index) — сила тренда
+// > 25: сильный тренд, 20-25: начало тренда, < 20: боковик
+function adx(candles: OHLCV[], period = 14): number {
+  if (candles.length < period * 2) return 0;
+
+  const trs: number[] = [];
+  const plusDMs: number[] = [];
+  const minusDMs: number[] = [];
+
+  for (let i = 1; i < candles.length; i++) {
+    const high = candles[i].high, low = candles[i].low;
+    const prevHigh = candles[i - 1].high, prevLow = candles[i - 1].low, prevClose = candles[i - 1].close;
+    const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
+    const upMove = high - prevHigh;
+    const downMove = prevLow - low;
+    plusDMs.push(upMove > downMove && upMove > 0 ? upMove : 0);
+    minusDMs.push(downMove > upMove && downMove > 0 ? downMove : 0);
+    trs.push(tr);
+  }
+
+  const smTR = wilderSmooth(trs, period);
+  const smPlusDM = wilderSmooth(plusDMs, period);
+  const smMinusDM = wilderSmooth(minusDMs, period);
+
+  if (smTR === 0) return 0;
+  const plusDI = (smPlusDM / smTR) * 100;
+  const minusDI = (smMinusDM / smTR) * 100;
+  const diSum = plusDI + minusDI;
+  if (diSum === 0) return 0;
+
+  return Math.abs(plusDI - minusDI) / diSum * 100;
+}
+
 export function calculateIndicators(candles: OHLCV[]): Indicators {
   const closes = candles.map(c => c.close);
   const highs = candles.map(c => c.high);
@@ -106,6 +149,7 @@ export function calculateIndicators(candles: OHLCV[]): Indicators {
       lower: sma - 2 * std,
     },
     atr: atr(candles),
+    adx: adx(candles),
     volume_ratio: currentVolume / avgVolume,
   };
 }

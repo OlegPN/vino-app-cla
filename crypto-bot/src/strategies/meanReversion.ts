@@ -34,6 +34,18 @@ export function meanReversionStrategy(ind: Indicators, obm: OrderBookMetrics, pr
   // Объём при развороте
   if (ind.volume_ratio > 2 && Math.abs(score) > 0.3) {
     score *= 1.15; reasons.push('Высокий объём подтверждает разворот');
+  } else if (ind.volume_ratio < 0.5) {
+    score *= 0.4; reasons.push(`Низкий объём (${ind.volume_ratio.toFixed(2)}x) — разворот ненадёжен`);
+  }
+
+  // EMA200 — в глобальном медвежьем тренде требуем экстремальный RSI (<25) для BUY
+  if (score > 0 && price < ind.ema200) {
+    if (ind.rsi >= 25) {
+      score *= 0.4; // ослабляем сигнал — только очень перепроданный RSI проходит
+      reasons.push('Ниже EMA200 — BUY требует экстремального RSI < 25');
+    } else {
+      reasons.push('RSI экстремальный + ниже EMA200 — возможен отскок');
+    }
   }
 
   // Стакан против тренда (ищем противодавление)

@@ -18,33 +18,53 @@ const DASHBOARD_PORT = 4200;
 const BOT_STATE_FILE = path.join('logs', 'bot-settings.json');
 
 // Загружаем сохранённые настройки или берём из .env
-function loadSettings(): { pair: string; strategy: StrategyName } {
+function loadSettings(): { pair: string; pairStrategies: Record<string, StrategyName> } {
+  const defaultStrategies = (): Record<string, StrategyName> =>
+    Object.fromEntries(AVAILABLE_PAIRS.map(p => [p, 'hybrid'])) as Record<string, StrategyName>;
+
   try {
     if (fs.existsSync(BOT_STATE_FILE)) {
       const data = JSON.parse(fs.readFileSync(BOT_STATE_FILE, 'utf-8'));
-      const validStrategies: StrategyName[] = ['hybrid', 'trend', 'meanReversion', 'scalping'];
+      const valid: StrategyName[] = ['hybrid', 'trend', 'meanReversion', 'scalping'];
       const pair = AVAILABLE_PAIRS.includes(data.pair) ? data.pair : (process.env.TRADING_PAIR || 'BTC/USDT');
-      const strategy = validStrategies.includes(data.strategy) ? data.strategy : ((process.env.STRATEGY as StrategyName) || 'hybrid');
-      logger.info(`Восстановлены настройки: ${pair} | ${strategy}`);
-      return { pair, strategy };
+
+      let pairStrategies: Record<string, StrategyName>;
+      if (data.pairStrategies && typeof data.pairStrategies === 'object') {
+        // Новый формат: per-pair стратегии
+        pairStrategies = Object.fromEntries(
+          AVAILABLE_PAIRS.map(p => [p, valid.includes(data.pairStrategies[p]) ? data.pairStrategies[p] : 'hybrid'])
+        ) as Record<string, StrategyName>;
+      } else {
+        // Старый формат: одна стратегия — применяем ко всем парам
+        const strat = valid.includes(data.strategy) ? data.strategy : 'hybrid';
+        pairStrategies = Object.fromEntries(AVAILABLE_PAIRS.map(p => [p, strat])) as Record<string, StrategyName>;
+      }
+
+      logger.info(`Восстановлены настройки: ${pair} | ${pairStrategies[pair]}`);
+      return { pair, pairStrategies };
     }
   } catch { /* файла нет, используем дефолты */ }
-  return { pair: process.env.TRADING_PAIR || 'BTC/USDT', strategy: (process.env.STRATEGY as StrategyName) || 'hybrid' };
+
+  return { pair: process.env.TRADING_PAIR || 'BTC/USDT', pairStrategies: defaultStrategies() };
 }
 
 function saveSettings() {
   try {
     fs.mkdirSync('logs', { recursive: true });
-    fs.writeFileSync(BOT_STATE_FILE, JSON.stringify({ pair: currentPair, strategy: currentStrategy, updatedAt: Date.now() }, null, 2));
+    fs.writeFileSync(BOT_STATE_FILE, JSON.stringify({ pair: currentPair, pairStrategies, updatedAt: Date.now() }, null, 2));
   } catch (e) { logger.warn(`Не удалось сохранить настройки: ${e}`); }
 }
 
 const savedSettings = loadSettings();
 let currentPair = savedSettings.pair;
-let currentStrategy: StrategyName = savedSettings.strategy;
+let pairStrategies: Record<string, StrategyName> = savedSettings.pairStrategies;
 let TIMEFRAME = '1h';
 let isRunning = false;
 let cycleVersion = 0; // инкрементируется при restartCycle, чтобы прервать старый цикл
+
+function getStrategy(pair: string): StrategyName {
+  return pairStrategies[pair] || 'hybrid';
+}
 
 const binance = new BinanceClient();
 const riskManager = new RiskManager();
@@ -70,7 +90,7 @@ async function runCycle() {
 
   try {
     const pair = currentPair;
-    const strategy = currentStrategy;
+    const strategy = getStrategy(pair);
     TIMEFRAME = getTimeframe(strategy);
 
     logger.info(`--- ${pair} | ${strategy} | ${TIMEFRAME} ---`);
@@ -124,18 +144,42 @@ async function runCycle() {
     let posState: BotState['position'] = { active: false };
 
     if (pos) {
-      const pnl = (price - pos.entryPrice) * pos.quantity;
-      posState = { active: true, ...pos, pnl };
+      // Получаем актуальную цену для пары позиции (даже если сейчас активна другая пара)
+      let posPrice = price;
+      if (pos.symbol !== pair) {
+        try {
+          const posTicker = await binance.getTicker(pos.symbol);
+          posPrice = posTicker.last;
+          logger.info(`SL/TP мониторинг ${pos.symbol}: $${posPrice} (активна пара ${pair})`);
+        } catch (e) {
+          logger.warn(`Не удалось получить цену ${pos.symbol} для SL/TP: ${e}`);
+        }
+        if (myVersion !== cycleVersion) { isRunning = false; return; }
+      }
 
-      const { close, reason } = riskManager.shouldClose(price);
+      // Трейлинг стоп — обновляем SL по максимуму, обновляем биржевой ордер если SL сдвинулся
+      const slUpdated = riskManager.updateTrailingStop(posPrice);
+      if (slUpdated) {
+        const updatedPos = riskManager.getPosition()!;
+        binance.cancelAllOrders(updatedPos.symbol).then(() =>
+          binance.placeStopLoss(updatedPos.symbol, updatedPos.quantity, updatedPos.stopLoss)
+            .catch(e => logger.warn(`Trailing SL order update failed: ${e}`))
+        ).catch(() => {});
+      }
+
+      const pnl = (posPrice - pos.entryPrice) * pos.quantity;
+      posState = { active: true, ...riskManager.getPosition()!, pnl };
+
+      const { close, reason } = riskManager.shouldClose(posPrice);
       if (close) {
-        logger.info(`Закрываем: ${reason}`);
-        await binance.placeMarketSell(pair, pos.quantity);
-        pnlTracker.addSell(pair, strategy, price, pos.quantity, pos.entryPrice, reason);
+        logger.info(`Закрываем ${pos.symbol}: ${reason}`);
+        await binance.cancelAllOrders(pos.symbol); // снимаем биржевой SL ордер
+        await binance.placeMarketSell(pos.symbol, pos.quantity);
+        pnlTracker.addSell(pos.symbol, getStrategy(pos.symbol), posPrice, pos.quantity, pos.entryPrice, reason);
         riskManager.closePosition();
         posState = { active: false };
       }
-    } else if (tradeSignal.signal === 'BUY' && tradeSignal.confidence >= 0.25) {
+    } else if (tradeSignal.signal === 'BUY' && tradeSignal.confidence >= 0.45 && indicators.volume_ratio >= 0.7) {
       const usdtBalance = balance.USDT || 0;
       if (usdtBalance >= 10) {
         // Финальная проверка перед торговой операцией — не торгуем на старой паре
@@ -143,7 +187,11 @@ async function runCycle() {
         const maxUsdt = Math.min(usdtBalance * 0.95, Number(process.env.MAX_POSITION_SIZE_USDT) || 100);
         const quantity = riskManager.calculatePositionSize(usdtBalance, price);
         await binance.placeMarketBuy(pair, maxUsdt);
-        riskManager.openPosition(pair, price, quantity);
+        const openedPos = riskManager.openPosition(pair, price, quantity, indicators.atr);
+        // Размещаем биржевой стоп-ордер — сработает точно по уровню SL без задержки опроса
+        binance.placeStopLoss(pair, quantity, openedPos.stopLoss).catch(e =>
+          logger.warn(`Не удалось разместить STOP_LOSS ордер: ${e}`)
+        );
         pnlTracker.addBuy(pair, strategy, price, quantity);
         const newPos = riskManager.getPosition()!;
         posState = { active: true, ...newPos, pnl: 0 };
@@ -158,6 +206,7 @@ async function runCycle() {
 
     updateState({
       pair, strategy,
+      pairStrategies: { ...pairStrategies },
       price, priceChange24h,
       rsi: indicators.rsi,
       macd: indicators.macd.histogram,
@@ -185,9 +234,9 @@ async function runCycle() {
   }
 }
 
-// Интервал зависит от стратегии
+// Интервал зависит от стратегии текущей пары
 function getCycleInterval(): number {
-  return currentStrategy === 'scalping' ? 15_000 : 60_000;
+  return getStrategy(currentPair) === 'scalping' ? 15_000 : 60_000;
 }
 
 let cycleTimer: ReturnType<typeof setInterval>;
@@ -197,7 +246,7 @@ function restartCycle() {
   cycleVersion++;   // инвалидируем текущий цикл — он сам прервётся
   isRunning = false; // немедленно разрешаем запуск нового цикла
   const ms = getCycleInterval();
-  logger.info(`Цикл: каждые ${ms / 1000}с | Пара: ${currentPair} | Стратегия: ${currentStrategy}`);
+  logger.info(`Цикл: каждые ${ms / 1000}с | Пара: ${currentPair} | Стратегия: ${getStrategy(currentPair)}`);
   runCycle();
   cycleTimer = setInterval(runCycle, ms);
 }
@@ -207,27 +256,25 @@ async function main() {
 
   startDashboard(DASHBOARD_PORT);
 
+  // Сразу отдаём в дашборд сохранённые настройки — до завершения первого цикла
+  updateState({ pair: currentPair, strategy: getStrategy(currentPair), pairStrategies: { ...pairStrategies }, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
+
   // Команды из браузера
   onCommand((cmd) => {
     if (cmd.type === 'setPair' && AVAILABLE_PAIRS.includes(cmd.value)) {
-      if (riskManager.hasOpenPosition()) {
-        logger.warn('Закрой позицию перед сменой пары');
-        sendNotification('Закройте активную позицию перед сменой пары', 'warn');
-        return;
-      }
       logger.info(`Смена пары: ${currentPair} → ${cmd.value}`);
       currentPair = cmd.value;
-      saveSettings(); // сохраняем, чтобы не потерять при перезапуске
+      saveSettings();
       // Мгновенная реакция UI — не ждём завершения цикла
-      updateState({ pair: cmd.value, status: 'waiting', signal: 'WAITING', signalConfidence: 0, price: 0, priceChange24h: 0 });
+      updateState({ pair: cmd.value, strategy: getStrategy(cmd.value), pairStrategies: { ...pairStrategies }, status: 'waiting', signal: 'WAITING', signalConfidence: 0, price: 0, priceChange24h: 0 });
       restartCycle();
     }
     if (cmd.type === 'setStrategy') {
-      logger.info(`Смена стратегии: ${currentStrategy} → ${cmd.value}`);
-      currentStrategy = cmd.value as StrategyName;
-      saveSettings(); // сохраняем
+      logger.info(`Смена стратегии для ${currentPair}: ${getStrategy(currentPair)} → ${cmd.value}`);
+      pairStrategies[currentPair] = cmd.value as StrategyName;
+      saveSettings();
       // Мгновенная реакция UI
-      updateState({ strategy: cmd.value as StrategyName, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
+      updateState({ strategy: cmd.value as StrategyName, pairStrategies: { ...pairStrategies }, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
       restartCycle();
     }
   });

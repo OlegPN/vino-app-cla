@@ -31,6 +31,20 @@ export function trendStrategy(ind: Indicators, obm: OrderBookMetrics, price: num
   // Объём подтверждает тренд
   if (ind.volume_ratio > 1.5) {
     score *= 1.2; reasons.push(`Объём подтверждает (${ind.volume_ratio.toFixed(1)}x)`);
+  } else if (ind.volume_ratio < 0.5) {
+    score *= 0.5; reasons.push(`Низкий объём (${ind.volume_ratio.toFixed(2)}x) — тренд слабый`);
+  }
+
+  // ADX — требуем сильный тренд для трендовой стратегии
+  if (ind.adx < 15) {
+    // Боковик — трендовая стратегия не работает
+    score *= 0.3;
+    reasons.push(`ADX слабый (${ind.adx.toFixed(0)}) — боковик, тренд отсутствует`);
+  } else if (ind.adx > 25) {
+    score *= 1.2;
+    reasons.push(`ADX сильный (${ind.adx.toFixed(0)}) — тренд подтверждён`);
+  } else {
+    reasons.push(`ADX умеренный (${ind.adx.toFixed(0)})`);
   }
 
   // Стакан
