@@ -8,7 +8,10 @@ import {
   LogOut,
   ChevronRight,
   Shield,
+  Download,
+  CheckCircle,
 } from 'lucide-react';
+import { usePWAInstall } from '../components/usePWAInstall';
 
 const menuItems = [
   {
@@ -36,6 +39,8 @@ const menuItems = [
 ];
 
 export default function More() {
+  const { canInstall, isInstalled, install } = usePWAInstall();
+
   return (
     <div
       className="min-h-screen pb-32"
@@ -117,6 +122,59 @@ export default function More() {
             </div>
           </div>
         ))}
+
+        {/* Install PWA */}
+        {!isInstalled && (
+          <button
+            onClick={canInstall ? install : undefined}
+            disabled={!canInstall}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl"
+            style={{
+              background: canInstall
+                ? 'linear-gradient(135deg, #722F37, #4A1520)'
+                : '#fff',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              opacity: canInstall ? 1 : 0.6,
+            }}
+          >
+            <div
+              className="rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 36,
+                height: 36,
+                background: canInstall ? 'rgba(255,255,255,0.2)' : '#f5f0ee',
+              }}
+            >
+              <Download size={18} color={canInstall ? '#fff' : '#722F37'} />
+            </div>
+            <div className="flex-1 text-left">
+              <p style={{ fontSize: 14, fontWeight: 600, color: canInstall ? '#fff' : '#1a1a1a' }}>
+                Установить приложение
+              </p>
+              <p style={{ fontSize: 12, color: canInstall ? 'rgba(255,255,255,0.7)' : '#aaa' }}>
+                {canInstall ? 'Добавить на главный экран' : 'Откройте в браузере для установки'}
+              </p>
+            </div>
+          </button>
+        )}
+
+        {isInstalled && (
+          <div
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl"
+            style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
+          >
+            <div
+              className="rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ width: 36, height: 36, background: '#f0fff4' }}
+            >
+              <CheckCircle size={18} color="#22c55e" />
+            </div>
+            <div className="flex-1 text-left">
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a' }}>Приложение установлено</p>
+              <p style={{ fontSize: 12, color: '#aaa' }}>Vino на вашем устройстве</p>
+            </div>
+          </div>
+        )}
 
         {/* Logout */}
         <button
