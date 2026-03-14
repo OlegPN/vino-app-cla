@@ -129,9 +129,11 @@ export function calculateIndicators(candles: OHLCV[]): Indicators {
   const sma = recentCloses.reduce((a, b) => a + b, 0) / period;
   const std = Math.sqrt(recentCloses.reduce((a, b) => a + Math.pow(b - sma, 2), 0) / period);
 
-  // Volume ratio
-  const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
-  const currentVolume = volumes[volumes.length - 1];
+  // Volume ratio — используем последние закрытые свечи, НЕ текущую открытую
+  // (Binance возвращает текущую незакрытую свечу последней, её объём неполный)
+  const closedVolumes = volumes.slice(0, -1);
+  const avgVolume = closedVolumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+  const currentVolume = closedVolumes[closedVolumes.length - 1];
 
   return {
     rsi: rsi(closes),

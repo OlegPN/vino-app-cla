@@ -107,7 +107,11 @@
 
   /* Position */
   .position-box{background:var(--bg3);border-radius:8px;padding:14px;border:1px solid transparent}
-  .position-box.active{border-color:rgba(0,230,118,.3);box-shadow:0 0 15px rgba(0,230,118,.05)}
+  .position-box.active.long{border-color:rgba(0,230,118,.3);box-shadow:0 0 15px rgba(0,230,118,.05)}
+  .position-box.active.short{border-color:rgba(255,61,0,.35);box-shadow:0 0 15px rgba(255,61,0,.07)}
+  .dir-badge{font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 8px;border-radius:4px}
+  .dir-badge.long{color:var(--green);background:rgba(0,230,118,.1)}
+  .dir-badge.short{color:var(--red);background:rgba(255,61,0,.12)}
   .pos-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:7px}
   .pos-key{color:var(--muted)}
 
@@ -214,6 +218,10 @@
         <div class="ctrl-group" id="pairBtns"></div>
         <div class="ctrl-divider"></div>
         <div class="ctrl-group" id="stratBtns"></div>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group" id="modelBtns"></div>
+        <div class="ctrl-divider"></div>
+        <button class="ctrl-btn" onclick="confirmReset()" style="color:var(--red);border-color:rgba(255,68,68,.4)" title="Сбросить историю сделок">RESET</button>
       </div>
       <div class="status-bar">
         <div class="status-dot waiting" id="statusDot"></div>
@@ -291,6 +299,7 @@
       <div class="position-box" id="positionBox">
         <div class="empty" id="noPosition">Нет активной позиции</div>
         <div id="positionData" style="display:none">
+          <div class="pos-row"><span class="pos-key">Направление</span><span id="posDirection" class="dir-badge">—</span></div>
           <div class="pos-row"><span class="pos-key">Цена входа</span><span id="posEntry" style="color:#fff;font-weight:600">—</span></div>
           <div class="pos-row"><span class="pos-key">Кол-во</span><span id="posQty">—</span></div>
           <div class="pos-row"><span class="pos-key">Stop Loss</span><span id="posSL" style="color:var(--red)">—</span></div>
@@ -367,13 +376,17 @@
   let priceHistory = [];
   let availablePairs = [];
   let availableStrategies = [];
+  let availableModels = [];
   let currentPair = 'BTC/USDT';
   let currentStrategy = 'hybrid';
+  let currentModel = '';
   let pairStrategies = {};
   let pendingPair = null;
   let pendingStrategy = null;
+  let pendingModel = null;
   let pendingPairTimer = null;
   let pendingStratTimer = null;
+  let pendingModelTimer = null;
   let ws;
   const STRAT_ABBR = { hybrid:'AI', trend:'TR', meanReversion:'MR', scalping:'SC' };
 
@@ -394,6 +407,12 @@
 
   function sendCmd(type, value) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type, value}));
+  }
+
+  function confirmReset() {
+    if (!confirm('Сбросить всю историю сделок?\nТекущий баланс станет новым стартовым.')) return;
+    sendCmd('resetTrades', '1');
+    showToast('История сброшена', 'info');
   }
 
   function renderPairBtns() {
@@ -435,12 +454,33 @@
   }
 
   function selectStrategy(id) {
-    if (id === pendingStrategy) return; // уже переключаем на эту стратегию
+    if (id === pendingStrategy) return;
     if (pendingStratTimer) clearTimeout(pendingStratTimer);
     pendingStrategy = id;
     renderStratBtns();
     sendCmd('setStrategy', id);
     pendingStratTimer = setTimeout(() => { pendingStrategy = null; renderStratBtns(); }, 20000);
+  }
+
+  function renderModelBtns() {
+    const el = document.getElementById('modelBtns');
+    if (!el) return;
+    el.innerHTML = availableModels.map(m => {
+      const isSwitching = m.id === pendingModel;
+      const isActive = m.id === currentModel && !pendingModel;
+      const cls = isSwitching ? ' switching' : (isActive ? ' strat-active' : '');
+      const label = isSwitching ? m.label + ' ⟳' : m.label;
+      return `<button class="ctrl-btn${cls}" onclick="selectModel('${m.id}')" title="${m.id}">${label}</button>`;
+    }).join('');
+  }
+
+  function selectModel(id) {
+    if (id === pendingModel || id === currentModel) return;
+    if (pendingModelTimer) clearTimeout(pendingModelTimer);
+    pendingModel = id;
+    renderModelBtns();
+    sendCmd('setModel', id);
+    pendingModelTimer = setTimeout(() => { pendingModel = null; renderModelBtns(); }, 10000);
   }
 
   function updateScore(fillId, numId, score) {
@@ -504,6 +544,14 @@
         pendingStrategy = null;
       }
       renderStratBtns();
+    }
+    if (s.llmModel) {
+      currentModel = s.llmModel;
+      if (pendingModel === s.llmModel) {
+        clearTimeout(pendingModelTimer);
+        pendingModel = null;
+      }
+      renderModelBtns();
     }
 
     // Пара + стратегия
@@ -593,7 +641,11 @@
     const noPos = document.getElementById('noPosition');
     const posData = document.getElementById('positionData');
     if (pos.active) {
-      posBox.className = 'position-box active'; noPos.style.display='none'; posData.style.display='block';
+      const dir = (pos.direction || 'LONG').toLowerCase();
+      posBox.className = 'position-box active '+dir; noPos.style.display='none'; posData.style.display='block';
+      const dirEl = document.getElementById('posDirection');
+      dirEl.textContent = pos.direction || 'LONG';
+      dirEl.className = 'dir-badge '+dir;
       document.getElementById('posEntry').textContent = '$'+fmt(pos.entryPrice);
       document.getElementById('posQty').textContent = fmt(pos.quantity,6)+' '+currentPair.split('/')[0];
       document.getElementById('posSL').textContent = '$'+fmt(pos.stopLoss);
@@ -612,16 +664,26 @@
     if (trades.length===0) {
       list.innerHTML='<div class="empty">Сделок ещё не было</div>';
     } else {
-      list.innerHTML = trades.map(t => `
+      list.innerHTML = trades.map(t => {
+        const dir = t.direction || 'LONG';
+        const isShort = dir === 'SHORT';
+        const label = isShort
+          ? (t.pnl !== undefined ? 'SHORT ↗' : 'SHORT ↘')
+          : t.side;
+        const labelColor = isShort
+          ? (t.pnl !== undefined ? 'var(--green)' : 'var(--red)')
+          : (t.side === 'BUY' ? 'var(--green)' : 'var(--red)');
+        return `
         <div class="trade-item">
-          <span class="trade-side ${t.side}">${t.side}</span>
+          <span class="trade-side" style="color:${labelColor}">${label}</span>
           <span style="color:var(--muted)">${fmtTime(t.time)}</span>
           <span style="color:var(--purple);font-size:10px">${t.strategy||''}</span>
           <span style="color:var(--muted)">${t.pair||''}</span>
           <span style="color:var(--muted)">${fmt(t.quantity,5)}</span>
           <span class="trade-price">$${fmt(t.price)}</span>
           ${t.pnl!==undefined?`<span class="trade-pnl ${t.pnl>=0?'up':'down'}">${t.pnl>=0?'+$':'-$'}${fmt(Math.abs(t.pnl))}</span>`:''}
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
     // Статус
@@ -645,8 +707,10 @@
       if (msg.type === 'meta') {
         availablePairs = msg.pairs || [];
         availableStrategies = msg.strategies || [];
+        availableModels = msg.models || [];
         renderPairBtns();
         renderStratBtns();
+        renderModelBtns();
       }
       if (msg.type === 'notify') showToast(msg.text, msg.level || 'warn');
     };

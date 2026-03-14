@@ -11,7 +11,7 @@ import { scalpingStrategy } from './strategies/scalping';
 import { RiskManager } from './risk/manager';
 import { PnLTracker } from './risk/pnlTracker';
 import { logger } from './utils/logger';
-import { startDashboard, updateState, sendNotification, onCommand, StrategyName, AVAILABLE_PAIRS } from './dashboard/server';
+import { startDashboard, updateState, sendNotification, onCommand, StrategyName, AVAILABLE_PAIRS, AVAILABLE_MODELS } from './dashboard/server';
 import type { TradeSignal } from './strategies/hybrid';
 
 const DASHBOARD_PORT = 4200;
@@ -58,6 +58,7 @@ function saveSettings() {
 const savedSettings = loadSettings();
 let currentPair = savedSettings.pair;
 let pairStrategies: Record<string, StrategyName> = savedSettings.pairStrategies;
+let currentModel = process.env.LLM_MODEL || 'google/gemini-2.0-flash-001';
 let TIMEFRAME = '1h';
 let isRunning = false;
 let cycleVersion = 0; // инкрементируется при restartCycle, чтобы прервать старый цикл
@@ -121,7 +122,7 @@ async function runCycle() {
         volumeRatio: indicators.volume_ratio,
         orderBookImbalance: obMetrics.imbalance,
       };
-      const sentiment = await analyzeSentiment(context);
+      const sentiment = await analyzeSentiment(context, [], currentModel);
       if (myVersion !== cycleVersion) { isRunning = false; return; } // прерываем после медленного LLM
       tradeSignal = combineSignals(indicators, obMetrics, price, sentiment);
       llmReason = sentiment.reasoning;
@@ -150,51 +151,89 @@ async function runCycle() {
         try {
           const posTicker = await binance.getTicker(pos.symbol);
           posPrice = posTicker.last;
-          logger.info(`SL/TP мониторинг ${pos.symbol}: $${posPrice} (активна пара ${pair})`);
+          logger.info(`SL/TP мониторинг ${pos.symbol} [${pos.direction}]: $${posPrice}`);
         } catch (e) {
           logger.warn(`Не удалось получить цену ${pos.symbol} для SL/TP: ${e}`);
         }
         if (myVersion !== cycleVersion) { isRunning = false; return; }
       }
 
-      // Трейлинг стоп — обновляем SL по максимуму, обновляем биржевой ордер если SL сдвинулся
+      // Трейлинг стоп — обновляем SL и биржевой ордер
       const slUpdated = riskManager.updateTrailingStop(posPrice);
       if (slUpdated) {
         const updatedPos = riskManager.getPosition()!;
-        binance.cancelAllOrders(updatedPos.symbol).then(() =>
-          binance.placeStopLoss(updatedPos.symbol, updatedPos.quantity, updatedPos.stopLoss)
-            .catch(e => logger.warn(`Trailing SL order update failed: ${e}`))
-        ).catch(() => {});
+        if (binance.futuresMode) {
+          binance.cancelAllFuturesOrders(updatedPos.symbol).then(() =>
+            binance.placeFuturesStopLoss(updatedPos.symbol, updatedPos.direction, updatedPos.stopLoss)
+              .catch(e => logger.warn(`Trailing SL [${updatedPos.direction}] update failed: ${e}`))
+          ).catch(() => {});
+        } else {
+          binance.cancelAllOrders(updatedPos.symbol).then(() =>
+            binance.placeStopLoss(updatedPos.symbol, updatedPos.quantity, updatedPos.stopLoss)
+              .catch(e => logger.warn(`Trailing SL order update failed: ${e}`))
+          ).catch(() => {});
+        }
       }
 
-      const pnl = (posPrice - pos.entryPrice) * pos.quantity;
+      // PnL зависит от направления
+      const pnl = pos.direction === 'SHORT'
+        ? (pos.entryPrice - posPrice) * pos.quantity
+        : (posPrice - pos.entryPrice) * pos.quantity;
       posState = { active: true, ...riskManager.getPosition()!, pnl };
 
       const { close, reason } = riskManager.shouldClose(posPrice);
       if (close) {
-        logger.info(`Закрываем ${pos.symbol}: ${reason}`);
-        await binance.cancelAllOrders(pos.symbol); // снимаем биржевой SL ордер
-        await binance.placeMarketSell(pos.symbol, pos.quantity);
-        pnlTracker.addSell(pos.symbol, getStrategy(pos.symbol), posPrice, pos.quantity, pos.entryPrice, reason);
+        logger.info(`Закрываем ${pos.direction} ${pos.symbol}: ${reason}`);
+        if (pos.direction === 'SHORT') {
+          await binance.cancelAllFuturesOrders(pos.symbol);
+          await binance.closeShort(pos.symbol, pos.quantity);
+          pnlTracker.addShortClose(pos.symbol, getStrategy(pos.symbol), posPrice, pos.quantity, pos.entryPrice, reason);
+        } else {
+          await binance.cancelAllOrders(pos.symbol);
+          await binance.placeMarketSell(pos.symbol, pos.quantity);
+          pnlTracker.addSell(pos.symbol, getStrategy(pos.symbol), posPrice, pos.quantity, pos.entryPrice, reason);
+        }
         riskManager.closePosition();
         posState = { active: false };
       }
     } else if (tradeSignal.signal === 'BUY' && tradeSignal.confidence >= 0.45 && indicators.volume_ratio >= 0.7) {
+      // ── LONG ──
+      if (price <= indicators.ema200) {
+        logger.info(`BUY пропущен: $${price.toFixed(2)} ниже EMA200 $${indicators.ema200.toFixed(2)} — медвежий рынок`);
+      } else {
+        const usdtBalance = balance.USDT || 0;
+        if (usdtBalance >= 10) {
+          if (myVersion !== cycleVersion) { isRunning = false; return; }
+          const maxUsdt = Math.min(usdtBalance * 0.95, Number(process.env.MAX_POSITION_SIZE_USDT) || 100);
+          const { fillPrice, quantity } = await binance.placeMarketBuy(pair, maxUsdt);
+          const openedPos = riskManager.openPosition(pair, fillPrice, quantity, indicators.atr, 'LONG');
+          if (binance.futuresMode) {
+            binance.placeFuturesStopLoss(pair, 'LONG', openedPos.stopLoss)
+              .catch(e => logger.warn(`LONG SL ордер не удался: ${e}`));
+          } else {
+            binance.placeStopLoss(pair, quantity, openedPos.stopLoss)
+              .catch(e => logger.warn(`LONG SL ордер не удался: ${e}`));
+          }
+          pnlTracker.addBuy(pair, strategy, fillPrice, quantity);
+          posState = { active: true, ...riskManager.getPosition()!, pnl: 0 };
+        }
+      }
+    } else if (
+      tradeSignal.signal === 'SELL' && tradeSignal.confidence >= 0.45
+      && indicators.volume_ratio >= 0.7 && binance.futuresMode
+    ) {
+      // ── SHORT (только в futures режиме) ──
       const usdtBalance = balance.USDT || 0;
       if (usdtBalance >= 10) {
-        // Финальная проверка перед торговой операцией — не торгуем на старой паре
         if (myVersion !== cycleVersion) { isRunning = false; return; }
         const maxUsdt = Math.min(usdtBalance * 0.95, Number(process.env.MAX_POSITION_SIZE_USDT) || 100);
-        const quantity = riskManager.calculatePositionSize(usdtBalance, price);
-        await binance.placeMarketBuy(pair, maxUsdt);
-        const openedPos = riskManager.openPosition(pair, price, quantity, indicators.atr);
-        // Размещаем биржевой стоп-ордер — сработает точно по уровню SL без задержки опроса
-        binance.placeStopLoss(pair, quantity, openedPos.stopLoss).catch(e =>
-          logger.warn(`Не удалось разместить STOP_LOSS ордер: ${e}`)
-        );
-        pnlTracker.addBuy(pair, strategy, price, quantity);
-        const newPos = riskManager.getPosition()!;
-        posState = { active: true, ...newPos, pnl: 0 };
+        const { fillPrice, quantity } = await binance.openShort(pair, maxUsdt);
+        const openedPos = riskManager.openPosition(pair, fillPrice, quantity, indicators.atr, 'SHORT');
+        binance.placeFuturesStopLoss(pair, 'SHORT', openedPos.stopLoss)
+          .catch(e => logger.warn(`SHORT SL ордер не удался: ${e}`));
+        pnlTracker.addShortOpen(pair, strategy, fillPrice, quantity);
+        posState = { active: true, ...riskManager.getPosition()!, pnl: 0 };
+        logger.info(`SHORT открыт: ${pair} @ $${fillPrice} | SL: $${openedPos.stopLoss.toFixed(2)} | TP: $${openedPos.takeProfit.toFixed(2)}`);
       }
     }
 
@@ -257,7 +296,7 @@ async function main() {
   startDashboard(DASHBOARD_PORT);
 
   // Сразу отдаём в дашборд сохранённые настройки — до завершения первого цикла
-  updateState({ pair: currentPair, strategy: getStrategy(currentPair), pairStrategies: { ...pairStrategies }, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
+  updateState({ pair: currentPair, strategy: getStrategy(currentPair), pairStrategies: { ...pairStrategies }, llmModel: currentModel, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
 
   // Команды из браузера
   onCommand((cmd) => {
@@ -265,7 +304,6 @@ async function main() {
       logger.info(`Смена пары: ${currentPair} → ${cmd.value}`);
       currentPair = cmd.value;
       saveSettings();
-      // Мгновенная реакция UI — не ждём завершения цикла
       updateState({ pair: cmd.value, strategy: getStrategy(cmd.value), pairStrategies: { ...pairStrategies }, status: 'waiting', signal: 'WAITING', signalConfidence: 0, price: 0, priceChange24h: 0 });
       restartCycle();
     }
@@ -273,9 +311,24 @@ async function main() {
       logger.info(`Смена стратегии для ${currentPair}: ${getStrategy(currentPair)} → ${cmd.value}`);
       pairStrategies[currentPair] = cmd.value as StrategyName;
       saveSettings();
-      // Мгновенная реакция UI
       updateState({ strategy: cmd.value as StrategyName, pairStrategies: { ...pairStrategies }, status: 'waiting', signal: 'WAITING', signalConfidence: 0 });
       restartCycle();
+    }
+    if (cmd.type === 'setModel' && AVAILABLE_MODELS.some(m => m.id === cmd.value)) {
+      logger.info(`Смена модели: ${currentModel} → ${cmd.value}`);
+      currentModel = cmd.value;
+      updateState({ llmModel: currentModel });
+    }
+    if (cmd.type === 'resetTrades') {
+      binance.getBalance().then(balance => {
+        const usdt = balance.USDT || 0;
+        pnlTracker.reset(usdt);
+        logger.info(`Торговая история сброшена. Новый стартовый баланс: $${usdt}`);
+        updateState({ trades: [], pnl: pnlTracker.getStats(usdt) });
+      }).catch(() => {
+        pnlTracker.reset(0);
+        updateState({ trades: [], pnl: pnlTracker.getStats(0) });
+      });
     }
   });
 

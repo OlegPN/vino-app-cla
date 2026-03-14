@@ -20,7 +20,8 @@ export interface MarketContext {
 
 export async function analyzeSentiment(
   context: MarketContext,
-  newsHeadlines: string[] = []
+  newsHeadlines: string[] = [],
+  model?: string
 ): Promise<SentimentResult> {
   const newsText = newsHeadlines.length > 0
     ? `\nПоследние новости:\n${newsHeadlines.map(h => `- ${h}`).join('\n')}`
@@ -49,7 +50,7 @@ ${newsText}
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'anthropic/claude-sonnet-4-5',
+        model: model || process.env.LLM_MODEL || 'google/gemini-2.0-flash-001',
         max_tokens: 300,
         messages: [{ role: 'user', content: prompt }],
       },

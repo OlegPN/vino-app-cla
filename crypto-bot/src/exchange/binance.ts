@@ -21,17 +21,25 @@ export interface Balance {
   [coin: string]: number;
 }
 
-const BASE_URL = 'https://testnet.binance.vision';
+const BASE_URL         = 'https://testnet.binance.vision';
+const FUTURES_BASE_URL = process.env.BINANCE_TESTNET === 'true'
+  ? 'https://testnet.binancefuture.com'
+  : 'https://fapi.binance.com';
 
 export class BinanceClient {
   private apiKey: string;
   private secret: string;
+  public readonly futuresMode: boolean;
 
   constructor() {
     this.apiKey = process.env.BINANCE_API_KEY ?? '';
     this.secret = process.env.BINANCE_SECRET_KEY ?? '';
+    this.futuresMode = process.env.BINANCE_FUTURES === 'true';
     if (process.env.BINANCE_TESTNET === 'true') {
-      logger.info('Binance Testnet mode enabled');
+      logger.info(`Binance Testnet mode enabled${this.futuresMode ? ' (FUTURES)' : ' (SPOT)'}`);
+    }
+    if (this.futuresMode) {
+      logger.info(`Futures endpoint: ${FUTURES_BASE_URL}`);
     }
   }
 
@@ -139,19 +147,29 @@ export class BinanceClient {
     };
   }
 
-  async placeMarketBuy(symbol: string, usdtAmount: number) {
+  async placeMarketBuy(symbol: string, usdtAmount: number): Promise<{ fillPrice: number; quantity: number }> {
     const ticker = await this.getTicker(symbol);
-    const price = ticker.last;
-    const rawQty = usdtAmount / price;
-    // Binance требует точность 5 знаков для BTC
+    const estimatedPrice = ticker.last;
+    const rawQty = usdtAmount / estimatedPrice;
     const quantity = parseFloat(rawQty.toFixed(5));
-    logger.info(`BUY ${quantity} ${symbol} @ ~$${price}`);
-    return this.privatePost('/api/v3/order', {
+    logger.info(`BUY ${quantity} ${symbol} @ ~$${estimatedPrice}`);
+    const resp = await this.privatePost('/api/v3/order', {
       symbol: symbol.replace('/', ''),
       side: 'BUY',
       type: 'MARKET',
       quantity: String(quantity),
-    });
+    }) as { fills?: { price: string; qty: string }[]; executedQty?: string };
+
+    // Вычисляем средневзвешенную цену исполнения
+    let fillPrice = estimatedPrice;
+    let filledQty = quantity;
+    if (resp.fills && resp.fills.length > 0) {
+      const totalQty = resp.fills.reduce((s, f) => s + parseFloat(f.qty), 0);
+      fillPrice = resp.fills.reduce((s, f) => s + parseFloat(f.price) * parseFloat(f.qty), 0) / totalQty;
+      filledQty = totalQty;
+      logger.info(`BUY: ${filledQty.toFixed(5)} ${symbol.split('/')[0]} @ $${fillPrice.toFixed(2)} (оценка $${estimatedPrice})`);
+    }
+    return { fillPrice, quantity: filledQty };
   }
 
   async placeMarketSell(symbol: string, quantity: number) {
@@ -183,6 +201,87 @@ export class BinanceClient {
   }
 
   // Размещает рыночный стоп-ордер на бирже (срабатывает точно по stopPrice)
+  private async futuresPost(path: string, params: Record<string, string> = {}): Promise<unknown> {
+    const serverTime = await this.getServerTime();
+    const qs = new URLSearchParams({ ...params, timestamp: String(serverTime) }).toString();
+    const sig = this.sign(qs);
+    const url = `${FUTURES_BASE_URL}${path}?${qs}&signature=${sig}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-MBX-APIKEY': this.apiKey },
+      signal: AbortSignal.timeout(15000),
+    });
+    return res.json();
+  }
+
+  private async futuresDelete(path: string, params: Record<string, string> = {}): Promise<unknown> {
+    const serverTime = await this.getServerTime();
+    const qs = new URLSearchParams({ ...params, timestamp: String(serverTime) }).toString();
+    const sig = this.sign(qs);
+    const url = `${FUTURES_BASE_URL}${path}?${qs}&signature=${sig}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { 'X-MBX-APIKEY': this.apiKey },
+      signal: AbortSignal.timeout(15000),
+    });
+    return res.json();
+  }
+
+  // Открыть SHORT (фьючерсы: SELL MARKET)
+  async openShort(symbol: string, usdtAmount: number): Promise<{ fillPrice: number; quantity: number }> {
+    const ticker = await this.getTicker(symbol);
+    const estimatedPrice = ticker.last;
+    const rawQty = usdtAmount / estimatedPrice;
+    const quantity = parseFloat(rawQty.toFixed(5));
+    logger.info(`SHORT OPEN ${quantity} ${symbol} @ ~$${estimatedPrice}`);
+    const resp = await this.futuresPost('/fapi/v1/order', {
+      symbol: symbol.replace('/', ''),
+      side: 'SELL',
+      type: 'MARKET',
+      quantity: String(quantity),
+    }) as { avgPrice?: string; executedQty?: string };
+    const fillPrice = resp.avgPrice ? parseFloat(resp.avgPrice) : estimatedPrice;
+    const filledQty  = resp.executedQty ? parseFloat(resp.executedQty) : quantity;
+    logger.info(`SHORT opened: ${filledQty} ${symbol} @ $${fillPrice}`);
+    return { fillPrice, quantity: filledQty };
+  }
+
+  // Закрыть SHORT (фьючерсы: BUY MARKET reduceOnly)
+  async closeShort(symbol: string, quantity: number): Promise<void> {
+    const qty = parseFloat(quantity.toFixed(5));
+    logger.info(`SHORT CLOSE ${qty} ${symbol}`);
+    await this.futuresPost('/fapi/v1/order', {
+      symbol: symbol.replace('/', ''),
+      side: 'BUY',
+      type: 'MARKET',
+      quantity: String(qty),
+      reduceOnly: 'true',
+    });
+  }
+
+  // Стоп-ордер для фьючерсной позиции (LONG или SHORT)
+  async placeFuturesStopLoss(symbol: string, direction: 'LONG' | 'SHORT', stopPrice: number): Promise<void> {
+    const sp   = stopPrice.toFixed(2);
+    const side = direction === 'LONG' ? 'SELL' : 'BUY'; // закрываем позицию
+    logger.info(`Futures SL ${direction} ${symbol}: ${side} @ $${sp}`);
+    await this.futuresPost('/fapi/v1/order', {
+      symbol: symbol.replace('/', ''),
+      side,
+      type: 'STOP_MARKET',
+      stopPrice: sp,
+      closePosition: 'true',
+    });
+  }
+
+  // Отменить все фьючерсные ордера
+  async cancelAllFuturesOrders(symbol: string): Promise<void> {
+    try {
+      await this.futuresDelete('/fapi/v1/allOpenOrders', { symbol: symbol.replace('/', '') });
+    } catch (e) {
+      logger.warn(`cancelAllFuturesOrders ${symbol}: ${e}`);
+    }
+  }
+
   async placeStopLoss(symbol: string, quantity: number, stopPrice: number) {
     const qty = parseFloat(quantity.toFixed(5));
     // stopPrice нужно округлить до 2 знаков для большинства пар

@@ -14,6 +14,13 @@ export const AVAILABLE_STRATEGIES: { id: StrategyName; label: string; desc: stri
   { id: 'scalping', label: 'Scalping', desc: 'Стакан + быстрые сделки' },
 ];
 
+export const AVAILABLE_MODELS: { id: string; label: string }[] = [
+  { id: 'google/gemini-2.0-flash-001',          label: 'Gemini 2.0 Flash' },
+  { id: 'meta-llama/llama-3.3-70b-instruct',    label: 'Llama 3.3 70B' },
+  { id: 'deepseek/deepseek-chat',               label: 'DeepSeek V3' },
+  { id: 'anthropic/claude-sonnet-4-5',          label: 'Claude Sonnet' },
+];
+
 export interface BotState {
   pair: string;
   strategy: StrategyName;
@@ -33,6 +40,7 @@ export interface BotState {
   balance: { USDT: number; [k: string]: number };
   position: {
     active: boolean;
+    direction?: 'LONG' | 'SHORT';
     entryPrice?: number;
     quantity?: number;
     stopLoss?: number;
@@ -43,6 +51,7 @@ export interface BotState {
   trades: TradeRecord[];
   pnl: PnLStats;
   pairStrategies?: Record<string, StrategyName>;
+  llmModel: string;
   lastUpdate: number;
   status: 'running' | 'error' | 'waiting';
   notification?: { text: string; level: 'info' | 'warn' | 'error' };
@@ -65,6 +74,7 @@ let currentState: BotState = {
   signal: 'WAITING', signalConfidence: 0,
   mlScore: 0, llmScore: 0,
   llmReason: 'Ожидание первого цикла...',
+  llmModel: process.env.LLM_MODEL || 'google/gemini-2.0-flash-001',
   balance: { USDT: 0 },
   position: { active: false },
   trades: [],
@@ -81,7 +91,7 @@ app.get('/state', (_, res) => res.json(currentState));
 wss.on('connection', (ws) => {
   clients.add(ws);
   ws.send(JSON.stringify({ type: 'state', data: currentState }));
-  ws.send(JSON.stringify({ type: 'meta', pairs: AVAILABLE_PAIRS, strategies: AVAILABLE_STRATEGIES }));
+  ws.send(JSON.stringify({ type: 'meta', pairs: AVAILABLE_PAIRS, strategies: AVAILABLE_STRATEGIES, models: AVAILABLE_MODELS }));
 
   ws.on('message', (raw) => {
     try {

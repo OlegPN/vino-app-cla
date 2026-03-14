@@ -7,6 +7,7 @@ export interface TradeRecord {
   pair: string;
   strategy: string;
   side: 'BUY' | 'SELL';
+  direction: 'LONG' | 'SHORT';
   price: number;
   quantity: number;
   usdtValue: number;
@@ -31,6 +32,7 @@ export interface PnLStats {
 }
 
 const DATA_FILE = path.join('logs', 'trades.json');
+const COMMISSION_RATE = Number(process.env.COMMISSION_RATE) || 0.001; // 0.1% per trade
 
 export class PnLTracker {
   private trades: TradeRecord[] = [];
@@ -72,14 +74,8 @@ export class PnLTracker {
 
   addBuy(pair: string, strategy: string, price: number, quantity: number): TradeRecord {
     const trade: TradeRecord = {
-      id: this.idCounter++,
-      time: Date.now(),
-      pair,
-      strategy,
-      side: 'BUY',
-      price,
-      quantity,
-      usdtValue: price * quantity,
+      id: this.idCounter++, time: Date.now(), pair, strategy,
+      side: 'BUY', direction: 'LONG', price, quantity, usdtValue: price * quantity,
     };
     this.trades.push(trade);
     this.save();
@@ -87,19 +83,40 @@ export class PnLTracker {
   }
 
   addSell(pair: string, strategy: string, price: number, quantity: number, entryPrice: number, reason?: string): TradeRecord {
-    const pnl = (price - entryPrice) * quantity;
-    const pnlPct = ((price - entryPrice) / entryPrice) * 100;
+    const grossPnl = (price - entryPrice) * quantity;
+    const commission = (price * quantity + entryPrice * quantity) * COMMISSION_RATE;
     const trade: TradeRecord = {
-      id: this.idCounter++,
-      time: Date.now(),
-      pair,
-      strategy,
-      side: 'SELL',
-      price,
-      quantity,
-      usdtValue: price * quantity,
-      pnl,
-      pnlPct,
+      id: this.idCounter++, time: Date.now(), pair, strategy,
+      side: 'SELL', direction: 'LONG', price, quantity, usdtValue: price * quantity,
+      pnl: grossPnl - commission,
+      pnlPct: ((price - entryPrice) / entryPrice) * 100 - COMMISSION_RATE * 2 * 100,
+      reason,
+    };
+    this.trades.push(trade);
+    this.save();
+    return trade;
+  }
+
+  // SHORT: открытие (реально SELL на бирже, но фиксируем как SHORT BUY)
+  addShortOpen(pair: string, strategy: string, price: number, quantity: number): TradeRecord {
+    const trade: TradeRecord = {
+      id: this.idCounter++, time: Date.now(), pair, strategy,
+      side: 'SELL', direction: 'SHORT', price, quantity, usdtValue: price * quantity,
+    };
+    this.trades.push(trade);
+    this.save();
+    return trade;
+  }
+
+  // SHORT: закрытие (реально BUY на бирже) — прибыль если цена упала
+  addShortClose(pair: string, strategy: string, closePrice: number, quantity: number, entryPrice: number, reason?: string): TradeRecord {
+    const grossPnl = (entryPrice - closePrice) * quantity; // profit when price drops
+    const commission = (closePrice * quantity + entryPrice * quantity) * COMMISSION_RATE;
+    const trade: TradeRecord = {
+      id: this.idCounter++, time: Date.now(), pair, strategy,
+      side: 'BUY', direction: 'SHORT', price: closePrice, quantity, usdtValue: closePrice * quantity,
+      pnl: grossPnl - commission,
+      pnlPct: ((entryPrice - closePrice) / entryPrice) * 100 - COMMISSION_RATE * 2 * 100,
       reason,
     };
     this.trades.push(trade);
@@ -134,6 +151,13 @@ export class PnLTracker {
       roi: this.startBalance > 0 ? ((currentBalance - this.startBalance) / this.startBalance) * 100 : 0,
       equityCurve: equityCurve.slice(-50),
     };
+  }
+
+  reset(newStartBalance: number) {
+    this.trades = [];
+    this.idCounter = 1;
+    this.startBalance = newStartBalance;
+    this.save();
   }
 
   getRecentTrades(limit = 20): TradeRecord[] {

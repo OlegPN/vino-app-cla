@@ -28,10 +28,16 @@ export function scalpingStrategy(ind: Indicators, obm: OrderBookMetrics, price: 
     reasons.push('Ниже EMA200 — глобальный медвежий рынок');
   }
 
-  // ADX — при слабом тренде скальпинг ещё опаснее
-  if (ind.adx < 12) {
-    reasons.push(`ADX (${ind.adx.toFixed(0)}) — нет тренда, скальпинг невозможен`);
-    return { signal: 'HOLD', confidence: 0, mlScore: 0, llmScore: 0, finalScore: 0, reasons };
+  // ADX — сила тренда: штраф в боковике, бонус в тренде (без жёсткого блока)
+  if (ind.adx < 10) {
+    score *= 0.5;
+    reasons.push(`ADX слабый (${ind.adx.toFixed(0)}) — боковик, снижаем уверенность`);
+  } else if (ind.adx < 18) {
+    score *= 0.8;
+    reasons.push(`ADX (${ind.adx.toFixed(0)}) — умеренный рынок`);
+  } else if (ind.adx > 28) {
+    score *= 1.2;
+    reasons.push(`ADX (${ind.adx.toFixed(0)}) — сильный тренд`);
   }
 
   // RSI перекуплен — не покупаем
