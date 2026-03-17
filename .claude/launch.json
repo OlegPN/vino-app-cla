@@ -31,5 +31,11 @@
       "runtimeArgs": ["up"],
       "port": 3000
     }
+  ,{
+      "name": "CryptoAI Bot",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "crypto-bot", "run", "dev"],
+      "port": 4200
+    }
   ]
 }

@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router';
 import { BottomNav } from '../components/BottomNav';
+import { InstallBanner } from '../components/InstallBanner';
 
 export default function Root() {
   return (
@@ -9,6 +10,7 @@ export default function Root() {
     >
       <Outlet />
       <BottomNav />
+      <InstallBanner />
     </div>
   );
 }
